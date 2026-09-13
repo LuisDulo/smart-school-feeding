@@ -1,9 +1,8 @@
 import { render, screen } from '@testing-library/react';
 import App from './App';
 
-test('renders the admin sign in form when logged out', () => {
-  localStorage.clear();
+test('renders learn react link', () => {
   render(<App />);
-  const heading = screen.getByText(/Administrator Sign In/i);
-  expect(heading).toBeInTheDocument();
+  const linkElement = screen.getByText(/learn react/i);
+  expect(linkElement).toBeInTheDocument();
 });
