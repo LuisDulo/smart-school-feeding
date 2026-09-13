@@ -6,6 +6,8 @@ import Dashboard from './pages/Dashboard';
 import StudentBalances from './pages/StudentBalances';
 import MealDistribution from './pages/MealDistribution';
 import ForecastPage from './pages/ForecastPage';
+import AnomalyFlags from './pages/AnomalyFlags';
+import Reports from './pages/Reports';
 
 function LoginPage() {
   const { login } = useAuth();
@@ -73,6 +75,8 @@ const PAGES = {
   balances: StudentBalances,
   meals: MealDistribution,
   forecast: ForecastPage,
+  anomalies: AnomalyFlags,
+  reports: Reports,
 };
 
 function AppInner() {

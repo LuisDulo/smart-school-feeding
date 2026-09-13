@@ -143,6 +143,29 @@ def mpesa_callback(request):
                 logger.info(
                     f"Payment confirmed: {checkout_request_id} "
                     f"KES {tx.amount_cents/100} → account {meal_account.id}")
+
+                # Auto-score for anomalies after confirming payment
+                try:
+                    from anomalies.views import (if_model, if_scaler,
+                                                  IF_MODEL_LOADED, extract_features)
+                    if IF_MODEL_LOADED:
+                        features = extract_features(tx)
+                        scaled = if_scaler.transform(features)
+                        raw_score = float(if_model.decision_function(scaled)[0])
+                        prediction = int(if_model.predict(scaled)[0])
+                        anomaly_score = round(
+                            max(0, min(1, 1 - (raw_score + 0.5))), 4)
+                        if prediction == -1:
+                            from meals.models import AnomalyFlag
+                            AnomalyFlag.objects.get_or_create(
+                                transaction=tx,
+                                defaults={'anomaly_score': anomaly_score}
+                            )
+                            logger.info(
+                                f'Transaction {tx.id} flagged — '
+                                f'score: {anomaly_score}')
+                except Exception as e:
+                    logger.error(f'Auto-scoring error: {str(e)}')
             else:
                 tx.status = 'failed'
                 tx.save()

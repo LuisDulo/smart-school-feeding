@@ -9,6 +9,7 @@ import HomeScreen from './src/screens/HomeScreen';
 import TopUpScreen from './src/screens/TopUpScreen';
 import PaymentStatusScreen from './src/screens/PaymentStatusScreen';
 import PaymentHistoryScreen from './src/screens/PaymentHistoryScreen';
+import LowBalanceAlertScreen from './src/screens/LowBalanceAlertScreen';
 
 const Stack = createStackNavigator();
 
@@ -31,6 +32,7 @@ function AppNavigator() {
           <Stack.Screen name="TopUp" component={TopUpScreen} />
           <Stack.Screen name="PaymentStatus" component={PaymentStatusScreen} />
           <Stack.Screen name="PaymentHistory" component={PaymentHistoryScreen} />
+          <Stack.Screen name="LowBalanceAlert" component={LowBalanceAlertScreen} />
         </>
       ) : (
         <>
