@@ -202,6 +202,26 @@ class TestPayments(TestCase):
         self.assertEqual(res.status_code, 200)
         self.assertIsInstance(res.json(), list)
 
+    def test_parent_can_view_balance_and_history(self):
+        # A parent has no meal_account of their own — balance/history must
+        # resolve to their child's account instead of 404ing (regression:
+        # this worked for /initiate/ but not /balance/ or /history/ until
+        # resolve_meal_account() was applied consistently everywhere).
+        create_user(self.school, 'parent', 'Parent', 'parent@pay.com')
+        token = get_token(self.client, 'parent@pay.com')
+
+        balance_res = self.client.get(
+            '/api/payments/balance/',
+            HTTP_AUTHORIZATION=f'Bearer {token}')
+        self.assertEqual(balance_res.status_code, 200)
+        self.assertEqual(balance_res.json()['student_name'], 'Student')
+
+        history_res = self.client.get(
+            '/api/payments/history/',
+            HTTP_AUTHORIZATION=f'Bearer {token}')
+        self.assertEqual(history_res.status_code, 200)
+        self.assertIsInstance(history_res.json(), list)
+
     def test_minimum_amount_validation(self):
         bursar = create_user(
             self.school, 'bursar', 'Bursar', 'bursar@pay.com')
