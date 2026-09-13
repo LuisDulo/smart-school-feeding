@@ -14,19 +14,37 @@ api.interceptors.request.use((config) => {
 });
 
 api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
+  (res) => res,
+  (err) => {
+    if (err.response?.status === 401) {
       localStorage.clear();
-      window.location.href = '/login';
+      window.location.href = '/';
     }
-    return Promise.reject(error);
+    return Promise.reject(err);
   }
 );
 
 export const authAPI = {
   login: (data) => api.post('/auth/login/', data),
   profile: () => api.get('/auth/profile/'),
+};
+
+export const forecastAPI = {
+  generate: () => api.post('/forecast/generate/'),
+  history: () => api.get('/forecast/history/'),
+  stats: () => api.get('/forecast/stats/'),
+};
+
+export const mealsAPI = {
+  log: (dateStr) => api.get(`/meals/log/${dateStr ? `?date=${dateStr}` : ''}`),
+  lookup: (query) => api.get(`/meals/lookup/?q=${query}`),
+  serve: (studentId) => api.post('/meals/serve/', { student_id: studentId }),
+};
+
+export const paymentsAPI = {
+  balance: () => api.get('/payments/balance/'),
+  history: () => api.get('/payments/history/'),
+  allBalances: () => api.get('/payments/balances/'),
 };
 
 export default api;
