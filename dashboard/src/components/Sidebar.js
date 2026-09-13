@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext';
 const NAV_ITEMS = [
   { key: 'dashboard',  label: 'Dashboard',        icon: '🏠' },
   { key: 'balances',   label: 'Student Balances',  icon: '👥' },
+  { key: 'serve',      label: 'Serve Meals',       icon: '🥄' },
   { key: 'meals',      label: 'Meal Distribution', icon: '🍽️' },
   { key: 'forecast',   label: 'Demand Forecast',   icon: '📈' },
   { key: 'anomalies',  label: 'Anomaly Flags',     icon: '🚨' },
