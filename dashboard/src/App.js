@@ -1,24 +1,131 @@
-import React, { useState, useEffect } from 'react';
-import Login from './pages/Login';
-import DashboardHome from './pages/DashboardHome';
+import React, { useState } from 'react';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { authAPI } from './services/api';
+import Sidebar from './components/Sidebar';
+import Dashboard from './pages/Dashboard';
+import StudentBalances from './pages/StudentBalances';
+import MealDistribution from './pages/MealDistribution';
+import ForecastPage from './pages/ForecastPage';
 
-export default function App() {
-  const [user, setUser] = useState(null);
+function LoginPage() {
+  const { login } = useAuth();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    const stored = localStorage.getItem('user_data');
-    const token = localStorage.getItem('access_token');
-    if (stored && token) setUser(JSON.parse(stored));
-  }, []);
-
-  const handleLogin = (userData) => setUser(userData);
-
-  const handleLogout = () => {
-    localStorage.clear();
-    setUser(null);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      const res = await authAPI.login({ email, password });
+      login(res.data.user, res.data.tokens);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Login failed.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  return user
-    ? <DashboardHome user={user} onLogout={handleLogout} />
-    : <Login onLogin={handleLogin} />;
+  return (
+    <div style={loginStyles.page}>
+      <div style={loginStyles.left}>
+        <h1 style={loginStyles.brand}>Smart School<br />Feeding System</h1>
+        <p style={loginStyles.sub}>Administrative Dashboard</p>
+        <p style={loginStyles.sub}>Partner: Webmasters Kenya</p>
+        {['M-Pesa Integration', 'Linear Regression Forecasting',
+          'Isolation Forest Anomaly Detection'].map(f => (
+          <p key={f} style={loginStyles.feature}>✓  {f}</p>
+        ))}
+      </div>
+      <div style={loginStyles.right}>
+        <div style={loginStyles.card}>
+          <h2 style={loginStyles.cardTitle}>Administrator Sign In</h2>
+          <form onSubmit={handleSubmit}>
+            <label style={loginStyles.label}>Email</label>
+            <input style={loginStyles.input} type="email"
+              placeholder="admin@school.co.ke"
+              value={email} onChange={e => setEmail(e.target.value)}
+              required />
+            <label style={loginStyles.label}>Password</label>
+            <input style={loginStyles.input} type="password"
+              placeholder="••••••••"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              required />
+            {error && <p style={loginStyles.error}>{error}</p>}
+            <button style={loginStyles.btn} type="submit" disabled={loading}>
+              {loading ? 'Signing in...' : 'Sign In to Dashboard'}
+            </button>
+          </form>
+          <p style={{ fontSize: 11, color: '#9CA3AF', marginTop: 16 }}>
+            Test: admin@strathmoreprimary.ac.ke / Admin123!
+          </p>
+        </div>
+      </div>
+    </div>
+  );
 }
+
+const PAGES = {
+  dashboard: Dashboard,
+  balances: StudentBalances,
+  meals: MealDistribution,
+  forecast: ForecastPage,
+};
+
+function AppInner() {
+  const { user, logout } = useAuth();
+  const [page, setPage] = useState('dashboard');
+
+  if (!user) return <LoginPage />;
+
+  const PageComponent = PAGES[page] || Dashboard;
+
+  return (
+    <div style={{ display: 'flex', height: '100vh',
+                  fontFamily: 'Inter, sans-serif' }}>
+      <Sidebar active={page} onNavigate={setPage} />
+      <div style={{ flex: 1, overflow: 'auto' }}>
+        <PageComponent />
+      </div>
+    </div>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppInner />
+    </AuthProvider>
+  );
+}
+
+const loginStyles = {
+  page: { display: 'flex', height: '100vh',
+          fontFamily: 'Inter, sans-serif' },
+  left: { width: '40%', background: '#1A3A5C', padding: '60px 48px',
+          display: 'flex', flexDirection: 'column',
+          justifyContent: 'center' },
+  brand: { color: '#fff', fontSize: 32, fontWeight: 700,
+           lineHeight: 1.2, margin: 0 },
+  sub: { color: '#6B9AB8', fontSize: 14, marginTop: 8 },
+  feature: { color: '#A8D8C0', fontSize: 14, marginTop: 12 },
+  right: { flex: 1, background: '#F7F9FC', display: 'flex',
+           alignItems: 'center', justifyContent: 'center' },
+  card: { background: '#fff', borderRadius: 16, padding: 40,
+          width: 400, boxShadow: '0 4px 24px rgba(0,0,0,0.06)' },
+  cardTitle: { color: '#1A3A5C', fontSize: 22,
+               fontWeight: 700, margin: '0 0 24px' },
+  label: { display: 'block', fontSize: 13, fontWeight: 600,
+           color: '#374151', marginBottom: 6, marginTop: 16 },
+  input: { width: '100%', border: '1px solid #E5E7EB', borderRadius: 8,
+           padding: '12px 14px', fontSize: 14, boxSizing: 'border-box',
+           outline: 'none' },
+  error: { color: '#EF4444', fontSize: 13, marginTop: 12 },
+  btn: { width: '100%', background: '#1A6E3C', color: '#fff',
+         border: 'none', borderRadius: 8, padding: 14,
+         fontSize: 15, fontWeight: 700, marginTop: 24,
+         cursor: 'pointer' },
+};
