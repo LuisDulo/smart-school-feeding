@@ -17,6 +17,23 @@ from core.permissions import IsParentOrStudent, IsAdminOrBursar
 logger = logging.getLogger(__name__)
 
 
+def resolve_meal_account(user):
+    """
+    A student's own meal_account, or — for a parent, who has none of their
+    own — the first student's meal_account at the same school (the same
+    simplification InitiatePaymentView already used; a real system would
+    let a parent pick which of their children to view/manage). Raises
+    MealAccount.DoesNotExist if neither resolves, same as the plain
+    `user.meal_account` access this replaces.
+    """
+    if user.role == 'student':
+        return user.meal_account
+    student = User.objects.filter(school=user.school, role='student').first()
+    if not student:
+        raise MealAccount.DoesNotExist
+    return student.meal_account
+
+
 class InitiatePaymentView(APIView):
     """
     Parent initiates an M-Pesa STK Push top-up.
@@ -36,21 +53,11 @@ class InitiatePaymentView(APIView):
         # MealsJWTAuthentication (see core/authentication.py).
         user = request.user
 
-        # Get or find the meal account
-        # Parents top up for their student — for now parent tops up own linked account
-        # In a full system parents would select which student
+        # Get or find the meal account (own, if a student; otherwise the
+        # first student at the same school, for a parent — see
+        # resolve_meal_account's docstring)
         try:
-            if user.role == 'student':
-                meal_account = user.meal_account
-            else:
-                # Parent — get first student in same school for demo
-                student = User.objects.filter(
-                    school=user.school, role='student').first()
-                if not student:
-                    return Response(
-                        {'error': 'No student found in your school.'},
-                        status=status.HTTP_404_NOT_FOUND)
-                meal_account = student.meal_account
+            meal_account = resolve_meal_account(user)
         except MealAccount.DoesNotExist:
             return Response({'error': 'Meal account not found.'},
                             status=status.HTTP_404_NOT_FOUND)
@@ -207,14 +214,16 @@ class PaymentStatusView(APIView):
 
 class PaymentHistoryView(APIView):
     """
-    List all payment transactions for the logged-in user's meal account.
+    List all payment transactions for the logged-in user's meal account
+    (their own if a student, their child's if a parent — see
+    resolve_meal_account).
     GET /api/payments/history/
     """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         try:
-            meal_account = request.user.meal_account
+            meal_account = resolve_meal_account(request.user)
         except MealAccount.DoesNotExist:
             return Response({'error': 'Meal account not found.'},
                             status=status.HTTP_404_NOT_FOUND)
@@ -229,14 +238,15 @@ class PaymentHistoryView(APIView):
 
 class MealBalanceView(APIView):
     """
-    Return current meal balance for the logged-in student.
+    Return current meal balance for the logged-in user (their own if a
+    student, their child's if a parent — see resolve_meal_account).
     GET /api/payments/balance/
     """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         try:
-            meal_account = request.user.meal_account
+            meal_account = resolve_meal_account(request.user)
         except MealAccount.DoesNotExist:
             return Response({'error': 'Meal account not found.'},
                             status=status.HTTP_404_NOT_FOUND)
