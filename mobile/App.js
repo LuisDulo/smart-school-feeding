@@ -6,6 +6,9 @@ import { AuthProvider, useAuth } from './src/context/AuthContext';
 import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
 import HomeScreen from './src/screens/HomeScreen';
+import TopUpScreen from './src/screens/TopUpScreen';
+import PaymentStatusScreen from './src/screens/PaymentStatusScreen';
+import PaymentHistoryScreen from './src/screens/PaymentHistoryScreen';
 
 const Stack = createStackNavigator();
 
@@ -23,7 +26,12 @@ function AppNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       {user ? (
-        <Stack.Screen name="Home" component={HomeScreen} />
+        <>
+          <Stack.Screen name="Home" component={HomeScreen} />
+          <Stack.Screen name="TopUp" component={TopUpScreen} />
+          <Stack.Screen name="PaymentStatus" component={PaymentStatusScreen} />
+          <Stack.Screen name="PaymentHistory" component={PaymentHistoryScreen} />
+        </>
       ) : (
         <>
           <Stack.Screen name="Login" component={LoginScreen} />
