@@ -1,3 +1,7 @@
+// Must be the very first import — registers the native gesture-handler
+// module before anything else touches it (react-native-gesture-handler's
+// own setup requirement; @react-navigation/stack depends on it).
+import 'react-native-gesture-handler';
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
