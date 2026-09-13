@@ -1,7 +1,7 @@
 import random
 from datetime import timedelta
 
-from django.contrib.auth.hashers import make_password
+import bcrypt
 from django.core.management.base import BaseCommand
 from django.db import transaction
 from django.utils import timezone
@@ -28,6 +28,12 @@ MIN_TRANSACTION_KSH = 100
 MAX_TRANSACTION_KSH = 500
 
 
+def make_hashed(password):
+    """Hash with bcrypt — matches accounts.serializers.RegisterSerializer,
+    which is what LoginView's bcrypt.checkpw() expects."""
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+
+
 class Command(BaseCommand):
     help = 'Seed the database with demo data for Smart School Feeding.'
 
@@ -50,7 +56,7 @@ class Command(BaseCommand):
                 'school': school,
                 'role': 'kitchen',
                 'full_name': 'Kitchen Staff',
-                'hashed_password': make_password('Kitchen1234!'),
+                'hashed_password': make_hashed('Kitchen1234!'),
             },
         )
 
@@ -60,7 +66,7 @@ class Command(BaseCommand):
                 'school': school,
                 'role': 'bursar',
                 'full_name': 'School Bursar',
-                'hashed_password': make_password('Bursar1234!'),
+                'hashed_password': make_hashed('Bursar1234!'),
             },
         )
 
@@ -70,7 +76,7 @@ class Command(BaseCommand):
                 'school': school,
                 'role': 'admin',
                 'full_name': 'School Admin',
-                'hashed_password': make_password('SchoolAdmin1234!'),
+                'hashed_password': make_hashed('SchoolAdmin1234!'),
             },
         )
 
@@ -87,7 +93,7 @@ class Command(BaseCommand):
                     'school': school,
                     'role': 'student',
                     'full_name': f'{first_name} {STUDENT_LAST_NAME}{i}',
-                    'hashed_password': make_password(f'Student{i}1234!'),
+                    'hashed_password': make_hashed(f'Student{i}1234!'),
                 },
             )
             students.append(student)
