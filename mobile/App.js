@@ -14,6 +14,7 @@ import TopUpScreen from './src/screens/TopUpScreen';
 import PaymentStatusScreen from './src/screens/PaymentStatusScreen';
 import PaymentHistoryScreen from './src/screens/PaymentHistoryScreen';
 import LowBalanceAlertScreen from './src/screens/LowBalanceAlertScreen';
+import KitchenServeScreen from './src/screens/KitchenServeScreen';
 
 const Stack = createStackNavigator();
 
@@ -30,7 +31,11 @@ function AppNavigator() {
 
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      {user ? (
+      {user?.role === 'kitchen' ? (
+        // Kitchen staff only serve meals — none of the payment/balance
+        // screens below are relevant to them.
+        <Stack.Screen name="KitchenServe" component={KitchenServeScreen} />
+      ) : user ? (
         <>
           <Stack.Screen name="Home" component={HomeScreen} />
           <Stack.Screen name="TopUp" component={TopUpScreen} />

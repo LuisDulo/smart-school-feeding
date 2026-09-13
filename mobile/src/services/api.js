@@ -38,4 +38,9 @@ export const paymentsAPI = {
   balance: () => api.get('/payments/balance/'),
 };
 
+export const mealsAPI = {
+  lookup: (query) => api.get(`/meals/lookup/?q=${encodeURIComponent(query)}`),
+  serve: (studentId) => api.post('/meals/serve/', { student_id: studentId }),
+};
+
 export default api;

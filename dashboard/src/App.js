@@ -4,6 +4,7 @@ import { authAPI } from './services/api';
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import StudentBalances from './pages/StudentBalances';
+import ServeMeals from './pages/ServeMeals';
 import MealDistribution from './pages/MealDistribution';
 import ForecastPage from './pages/ForecastPage';
 import AnomalyFlags from './pages/AnomalyFlags';
@@ -73,6 +74,7 @@ function LoginPage() {
 const PAGES = {
   dashboard: Dashboard,
   balances: StudentBalances,
+  serve: ServeMeals,
   meals: MealDistribution,
   forecast: ForecastPage,
   anomalies: AnomalyFlags,
