@@ -31,4 +31,11 @@ export const authAPI = {
   getSchools: () => api.get('/auth/schools/'),
 };
 
+export const paymentsAPI = {
+  initiate: (data) => api.post('/payments/initiate/', data),
+  status: (transactionId) => api.get(`/payments/status/${transactionId}/`),
+  history: () => api.get('/payments/history/'),
+  balance: () => api.get('/payments/balance/'),
+};
+
 export default api;
