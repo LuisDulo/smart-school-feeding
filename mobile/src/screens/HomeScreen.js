@@ -1,8 +1,10 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { paymentsAPI } from '../services/api';
+
+const LOW_BALANCE_THRESHOLD_CENTS = 10000; // KES 100
 
 export default function HomeScreen({ navigation }) {
   const { user, logout } = useAuth();
@@ -21,6 +23,24 @@ export default function HomeScreen({ navigation }) {
       return () => { cancelled = true; };
     }, [user?.role])
   );
+
+  // Warn the student when their (live, not stale-snapshot) balance drops
+  // below the low-balance threshold. Only re-fires when balanceCents
+  // actually changes value, so dismissing the alert and returning to a
+  // still-low balance doesn't re-trigger it every time Home refocuses.
+  useEffect(() => {
+    if (user?.role !== 'student') return;
+    if (balanceCents === null || balanceCents < 0) return;
+    if (balanceCents >= LOW_BALANCE_THRESHOLD_CENTS) return;
+
+    const timer = setTimeout(() => {
+      navigation.navigate('LowBalanceAlert', {
+        balance_ksh: balanceCents / 100,
+        student_name: user.full_name
+      });
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [balanceCents, user]);
 
   const handleLogout = () => {
     Alert.alert('Log out', 'Are you sure?', [
