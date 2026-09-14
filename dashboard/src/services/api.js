@@ -38,13 +38,35 @@ export const forecastAPI = {
 export const mealsAPI = {
   log: (dateStr) => api.get(`/meals/log/${dateStr ? `?date=${dateStr}` : ''}`),
   lookup: (query) => api.get(`/meals/lookup/?q=${query}`),
-  serve: (studentId) => api.post('/meals/serve/', { student_id: studentId }),
+  serve: (studentId, itemIds) => api.post('/meals/serve/', { student_id: studentId, item_ids: itemIds }),
+  consumption: (mealAccountId) => api.get(`/meals/consumption/${mealAccountId ? `?meal_account_id=${mealAccountId}` : ''}`),
+  menuList: () => api.get('/meals/menu/'),
+  menuCreate: (data) => api.post('/meals/menu/', data),
+  menuUpdate: (id, data) => api.patch(`/meals/menu/${id}/`, data),
+  menuDelete: (id) => api.delete(`/meals/menu/${id}/`),
 };
 
 export const paymentsAPI = {
   balance: () => api.get('/payments/balance/'),
   history: () => api.get('/payments/history/'),
   allBalances: () => api.get('/payments/balances/'),
+  myChildren: () => api.get('/payments/my-children/'),
+  creditRequestQueue: (status) => api.get(`/payments/credit-requests/queue/${status ? `?status=${status}` : ''}`),
+  reviewCreditRequest: (id, data) => api.post(`/payments/credit-requests/${id}/review/`, data),
+};
+
+export const adminAPI = {
+  listStudents: () => api.get('/auth/admin/students/'),
+  createStudent: (data) => api.post('/auth/admin/students/', data),
+  listParents: () => api.get('/auth/admin/parents/'),
+  createParent: (data) => api.post('/auth/admin/parents/', data),
+  linkGuardian: (data) => api.post('/auth/admin/link/', data),
+  unlinkGuardian: (data) => api.delete('/auth/admin/link/', { data }),
+};
+
+export const supportAPI = {
+  queue: (status) => api.get(`/support/issues/queue/${status ? `?status=${status}` : ''}`),
+  resolve: (id, data) => api.post(`/support/issues/${id}/resolve/`, data),
 };
 
 export default api;

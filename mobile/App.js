@@ -15,6 +15,9 @@ import PaymentStatusScreen from './src/screens/PaymentStatusScreen';
 import PaymentHistoryScreen from './src/screens/PaymentHistoryScreen';
 import LowBalanceAlertScreen from './src/screens/LowBalanceAlertScreen';
 import KitchenServeScreen from './src/screens/KitchenServeScreen';
+import RaiseIssueScreen from './src/screens/RaiseIssueScreen';
+import MealConsumptionScreen from './src/screens/MealConsumptionScreen';
+import ApplyCreditScreen from './src/screens/ApplyCreditScreen';
 
 const Stack = createStackNavigator();
 
@@ -42,6 +45,9 @@ function AppNavigator() {
           <Stack.Screen name="PaymentStatus" component={PaymentStatusScreen} />
           <Stack.Screen name="PaymentHistory" component={PaymentHistoryScreen} />
           <Stack.Screen name="LowBalanceAlert" component={LowBalanceAlertScreen} />
+          <Stack.Screen name="MealConsumption" component={MealConsumptionScreen} />
+          <Stack.Screen name="RaiseIssue" component={RaiseIssueScreen} />
+          <Stack.Screen name="ApplyCredit" component={ApplyCreditScreen} />
         </>
       ) : (
         <>

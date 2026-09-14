@@ -6,7 +6,7 @@ from django.core.management.base import BaseCommand
 from django.utils import timezone
 from meals.models import (
     School, User, MealAccount, PaymentTransaction,
-    MealDistributionEvent, DemandForecast, AnomalyFlag
+    MealDistributionEvent, DemandForecast, AnomalyFlag, MenuItem
 )
 
 
@@ -98,6 +98,19 @@ class Command(BaseCommand):
             }
         )
         self.stdout.write(f'School: {school.name}')
+
+        # Starter menu — kitchen staff pick items when serving; the meal's
+        # total cost is whatever's selected, not a fixed price.
+        starter_menu = [
+            ('Rice', 3000), ('Beans', 3000), ('Sukuma Wiki', 1000),
+            ('Ugali', 2000), ('Cabbage', 1000), ('Chapati', 2500),
+        ]
+        for item_name, price_cents in starter_menu:
+            MenuItem.objects.get_or_create(
+                school=school, name=item_name,
+                defaults={'price_cents': price_cents}
+            )
+        self.stdout.write(f'Menu items ready: {len(starter_menu)}')
 
         # Staff
         kitchen, _ = User.objects.get_or_create(

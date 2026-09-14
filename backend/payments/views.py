@@ -7,31 +7,43 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
-from meals.models import PaymentTransaction, MealAccount, User
+from django.utils import timezone
+from meals.models import PaymentTransaction, MealAccount, User, CreditRequest
 from .mpesa import MPesaService
 from .serializers import (InitiatePaymentSerializer,
                            PaymentTransactionSerializer,
-                           MealBalanceSerializer)
-from core.permissions import IsParentOrStudent, IsAdminOrBursar
+                           MealBalanceSerializer,
+                           CreditRequestSerializer,
+                           CreateCreditRequestSerializer,
+                           ReviewCreditRequestSerializer)
+from core.permissions import IsParentOrStudent, IsAdminOrBursar, IsSchoolAdmin
 
 logger = logging.getLogger(__name__)
 
 
-def resolve_meal_account(user):
+def resolve_meal_account(user, meal_account_id=None):
     """
-    A student's own meal_account, or — for a parent, who has none of their
-    own — the first student's meal_account at the same school (the same
-    simplification InitiatePaymentView already used; a real system would
-    let a parent pick which of their children to view/manage). Raises
-    MealAccount.DoesNotExist if neither resolves, same as the plain
-    `user.meal_account` access this replaces.
+    A student's own meal_account, or — for a parent — one of their linked
+    children's accounts (meals.MealAccount.guardians). If the parent has
+    more than one linked child, `meal_account_id` picks which one;
+    without it, the first (by id) is used so existing single-child
+    callers keep working. Raises MealAccount.DoesNotExist if none
+    resolves, same as the plain `user.meal_account` access this replaces.
     """
     if user.role == 'student':
         return user.meal_account
-    student = User.objects.filter(school=user.school, role='student').first()
-    if not student:
+
+    linked = user.linked_meal_accounts.select_related('student').order_by('id')
+    if meal_account_id is not None:
+        account = linked.filter(id=meal_account_id).first()
+        if not account:
+            raise MealAccount.DoesNotExist
+        return account
+
+    account = linked.first()
+    if not account:
         raise MealAccount.DoesNotExist
-    return student.meal_account
+    return account
 
 
 class InitiatePaymentView(APIView):
@@ -53,11 +65,13 @@ class InitiatePaymentView(APIView):
         # MealsJWTAuthentication (see core/authentication.py).
         user = request.user
 
-        # Get or find the meal account (own, if a student; otherwise the
-        # first student at the same school, for a parent — see
-        # resolve_meal_account's docstring)
+        # Get or find the meal account (own, if a student; otherwise a
+        # linked child's, for a parent — see resolve_meal_account's
+        # docstring). ?meal_account_id= picks which child when a parent
+        # has more than one linked.
+        meal_account_id = request.query_params.get('meal_account_id')
         try:
-            meal_account = resolve_meal_account(user)
+            meal_account = resolve_meal_account(user, meal_account_id)
         except MealAccount.DoesNotExist:
             return Response({'error': 'Meal account not found.'},
                             status=status.HTTP_404_NOT_FOUND)
@@ -222,8 +236,9 @@ class PaymentHistoryView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        meal_account_id = request.query_params.get('meal_account_id')
         try:
-            meal_account = resolve_meal_account(request.user)
+            meal_account = resolve_meal_account(request.user, meal_account_id)
         except MealAccount.DoesNotExist:
             return Response({'error': 'Meal account not found.'},
                             status=status.HTTP_404_NOT_FOUND)
@@ -245,13 +260,30 @@ class MealBalanceView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        meal_account_id = request.query_params.get('meal_account_id')
         try:
-            meal_account = resolve_meal_account(request.user)
+            meal_account = resolve_meal_account(request.user, meal_account_id)
         except MealAccount.DoesNotExist:
             return Response({'error': 'Meal account not found.'},
                             status=status.HTTP_404_NOT_FOUND)
 
         return Response(MealBalanceSerializer(meal_account).data)
+
+
+class MyChildrenView(APIView):
+    """
+    A parent's linked children, so the mobile/dashboard UI can offer a
+    picker when there's more than one.
+    GET /api/payments/my-children/
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        if request.user.role != 'parent':
+            return Response({'error': 'Only parent accounts have linked children.'},
+                            status=status.HTTP_403_FORBIDDEN)
+        accounts = request.user.linked_meal_accounts.select_related('student').order_by('id')
+        return Response(MealBalanceSerializer(accounts, many=True).data)
 
 
 class AllStudentBalancesView(APIView):
@@ -267,3 +299,128 @@ class AllStudentBalancesView(APIView):
         ).select_related('student').order_by('balance_cents')
 
         return Response(MealBalanceSerializer(accounts, many=True).data)
+
+
+class ApplyCreditRequestView(APIView):
+    """
+    A parent applies to raise their child's overdraft limit — "let my
+    child keep eating on credit, I'll pay it later." Does NOT touch the
+    balance itself; only an admin approving it raises credit_limit_cents.
+    POST /api/payments/credit-requests/
+    Body: { requested_amount_cents, reason, meal_account_id? }
+    """
+    permission_classes = [IsAuthenticated, IsParentOrStudent]
+
+    def post(self, request):
+        if request.user.role != 'parent':
+            return Response(
+                {'error': 'Only parent accounts can request a credit limit.'},
+                status=status.HTTP_403_FORBIDDEN)
+
+        meal_account_id = request.data.get('meal_account_id')
+        try:
+            meal_account = resolve_meal_account(request.user, meal_account_id)
+        except MealAccount.DoesNotExist:
+            return Response({'error': 'Meal account not found.'},
+                            status=status.HTTP_404_NOT_FOUND)
+
+        serializer = CreateCreditRequestSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        credit_request = CreditRequest.objects.create(
+            meal_account=meal_account,
+            requested_by=request.user,
+            requested_amount_cents=serializer.validated_data['requested_amount_cents'],
+            reason=serializer.validated_data['reason'],
+        )
+        return Response({
+            'message': 'Credit request submitted for admin review.',
+            'request': CreditRequestSerializer(credit_request).data
+        }, status=status.HTTP_201_CREATED)
+
+    def get(self, request):
+        """A parent's own credit request history."""
+        if request.user.role != 'parent':
+            return Response(
+                {'error': 'Only parent accounts have credit requests.'},
+                status=status.HTTP_403_FORBIDDEN)
+        requests_qs = CreditRequest.objects.filter(
+            requested_by=request.user
+        ).select_related('meal_account__student', 'reviewed_by').order_by('-created_at')
+        return Response(CreditRequestSerializer(requests_qs, many=True).data)
+
+
+class CreditRequestQueueView(APIView):
+    """
+    Admin's queue of credit requests for their school.
+    GET /api/payments/credit-requests/queue/
+    GET /api/payments/credit-requests/queue/?status=pending
+    """
+    permission_classes = [IsAuthenticated, IsSchoolAdmin]
+
+    def get(self, request):
+        requests_qs = CreditRequest.objects.filter(
+            meal_account__student__school=request.user.school
+        ).select_related('meal_account__student', 'requested_by', 'reviewed_by'
+        ).order_by('-created_at')
+
+        status_param = request.query_params.get('status')
+        if status_param in ('pending', 'approved', 'rejected'):
+            requests_qs = requests_qs.filter(status=status_param)
+
+        return Response({
+            'total': requests_qs.count(),
+            'pending': requests_qs.filter(status='pending').count(),
+            'requests': CreditRequestSerializer(requests_qs, many=True).data
+        })
+
+
+class ReviewCreditRequestView(APIView):
+    """
+    Admin approves or rejects a credit request. Approving raises the
+    account's credit_limit_cents by the requested amount (additive, so an
+    earlier approved limit is never accidentally lowered by a later
+    request) — it does not add real balance.
+    POST /api/payments/credit-requests/{id}/review/
+    Body: { action: 'approved'|'rejected', review_notes }
+    """
+    permission_classes = [IsAuthenticated, IsSchoolAdmin]
+
+    def post(self, request, request_id):
+        try:
+            credit_request = CreditRequest.objects.select_related(
+                'meal_account').get(
+                    id=request_id,
+                    meal_account__student__school=request.user.school)
+        except CreditRequest.DoesNotExist:
+            return Response({'error': 'Credit request not found.'},
+                            status=status.HTTP_404_NOT_FOUND)
+
+        if credit_request.status != 'pending':
+            return Response(
+                {'error': 'This request has already been reviewed.'},
+                status=status.HTTP_409_CONFLICT)
+
+        serializer = ReviewCreditRequestSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        action = serializer.validated_data['action']
+
+        with db_transaction.atomic():
+            credit_request.status = action
+            credit_request.review_notes = serializer.validated_data['review_notes']
+            credit_request.reviewed_by = request.user
+            credit_request.reviewed_at = timezone.now()
+            credit_request.save()
+
+            if action == 'approved':
+                meal_account = credit_request.meal_account
+                meal_account.credit_limit_cents += credit_request.requested_amount_cents
+                meal_account.save()
+
+        return Response({
+            'message': f'Credit request {action}.',
+            'request': CreditRequestSerializer(credit_request).data
+        })

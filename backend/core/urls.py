@@ -9,4 +9,5 @@ urlpatterns = [
     path('api/forecast/', include('forecasting.urls')),
     path('api/anomalies/', include('anomalies.urls')),
     path('api/reports/', include('anomalies.report_urls')),
+    path('api/support/', include('accounts.support_urls')),
 ]

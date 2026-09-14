@@ -10,6 +10,10 @@ import MealDistribution from './pages/MealDistribution';
 import ForecastPage from './pages/ForecastPage';
 import AnomalyFlags from './pages/AnomalyFlags';
 import Reports from './pages/Reports';
+import MenuManagement from './pages/MenuManagement';
+import AccountManagement from './pages/AccountManagement';
+import CreditRequests from './pages/CreditRequests';
+import SupportIssues from './pages/SupportIssues';
 
 function LoginPage() {
   const { login } = useAuth();
@@ -78,7 +82,11 @@ const PAGES = {
   dashboard: Dashboard,
   balances: StudentBalances,
   serve: ServeMeals,
+  menu: MenuManagement,
   meals: MealDistribution,
+  accounts: AccountManagement,
+  credit: CreditRequests,
+  issues: SupportIssues,
   forecast: ForecastPage,
   anomalies: AnomalyFlags,
   reports: Reports,
