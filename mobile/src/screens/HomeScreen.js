@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { paymentsAPI } from '../services/api';
 
@@ -70,7 +71,10 @@ export default function HomeScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.greeting}>Good morning 👋</Text>
+        <View style={styles.greetingRow}>
+          <Text style={styles.greeting}>Good morning</Text>
+          <MaterialCommunityIcons name="hand-wave-outline" size={15} color="#A8D8C0" />
+        </View>
         <Text style={styles.name}>{user?.full_name}</Text>
         <Text style={styles.role}>{user?.school?.name} · {user?.role}</Text>
       </View>
@@ -91,7 +95,7 @@ export default function HomeScreen({ navigation }) {
           style={styles.actionBtn}
           onPress={() => navigation.navigate('TopUp')}
         >
-          <Text style={styles.actionIcon}>💳</Text>
+          <Feather name="credit-card" size={26} color="#1A6E3C" style={styles.actionIcon} />
           <Text style={styles.actionLabel}>Top Up</Text>
         </TouchableOpacity>
 
@@ -99,7 +103,7 @@ export default function HomeScreen({ navigation }) {
           style={styles.actionBtn}
           onPress={() => navigation.navigate('PaymentHistory')}
         >
-          <Text style={styles.actionIcon}>📋</Text>
+          <Feather name="clipboard" size={26} color="#1A6E3C" style={styles.actionIcon} />
           <Text style={styles.actionLabel}>History</Text>
         </TouchableOpacity>
       </View>
@@ -114,6 +118,7 @@ export default function HomeScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F7F9FC' },
   header: { backgroundColor: '#1A3A5C', padding: 28, paddingTop: 60 },
+  greetingRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   greeting: { color: '#A8D8C0', fontSize: 14 },
   name: { color: '#fff', fontSize: 22, fontWeight: '700', marginTop: 4 },
   role: { color: '#6B9AB8', fontSize: 12, marginTop: 4 },
@@ -127,7 +132,7 @@ const styles = StyleSheet.create({
                padding: 20, alignItems: 'center',
                shadowColor: '#000', shadowOpacity: 0.04,
                shadowRadius: 6, elevation: 2 },
-  actionIcon: { fontSize: 28, marginBottom: 8 },
+  actionIcon: { marginBottom: 8 },
   actionLabel: { fontSize: 13, fontWeight: '600', color: '#374151' },
   logoutBtn: { margin: 20, borderWidth: 1, borderColor: '#E5E7EB',
                borderRadius: 10, padding: 14, alignItems: 'center' },

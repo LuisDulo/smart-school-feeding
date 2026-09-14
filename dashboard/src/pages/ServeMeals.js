@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { FiSearch, FiCheckCircle } from 'react-icons/fi';
 import Topbar from '../components/Topbar';
 import { mealsAPI } from '../services/api';
 
@@ -62,18 +63,22 @@ export default function ServeMeals() {
         subtitle="Search a student and record a meal"
       />
       <div style={styles.content}>
-        <input
-          style={styles.search}
-          placeholder="🔍  Search student by name..."
-          value={query}
-          onChange={e => runSearch(e.target.value)}
-        />
+        <div style={styles.searchWrap}>
+          <FiSearch style={styles.searchIcon} />
+          <input
+            style={styles.search}
+            placeholder="Search student by name..."
+            value={query}
+            onChange={e => runSearch(e.target.value)}
+          />
+        </div>
 
         {error && <div style={styles.errorBanner}>{error}</div>}
 
         {lastServed && (
           <div style={styles.successBanner}>
-            ✅ Meal recorded for <strong>{lastServed.student}</strong> —
+            <FiCheckCircle style={styles.bannerIcon} />
+            Meal recorded for <strong>{lastServed.student}</strong> —
             new balance KES {lastServed.new_balance_ksh.toFixed(2)}
           </div>
         )}
@@ -141,14 +146,19 @@ const styles = {
   page: { flex: 1, display: 'flex', flexDirection: 'column',
           background: '#F7F9FC', overflow: 'auto' },
   content: { padding: 32 },
+  searchWrap: { position: 'relative', width: 320, marginBottom: 16 },
+  searchIcon: { position: 'absolute', left: 12, top: '50%',
+                transform: 'translateY(-50%)', width: 15, height: 15,
+                color: '#9CA3AF' },
   search: { border: '1px solid #E5E7EB', borderRadius: 8,
-            padding: '10px 16px', fontSize: 14,
-            width: 320, outline: 'none', marginBottom: 16,
-            boxSizing: 'border-box' },
+            padding: '10px 16px 10px 36px', fontSize: 14,
+            width: '100%', outline: 'none', boxSizing: 'border-box' },
   errorBanner: { background: '#FEE2E2', color: '#C0392B', padding: '10px 16px',
                  borderRadius: 8, fontSize: 13, marginBottom: 16 },
   successBanner: { background: '#D1FAE5', color: '#1A6E3C', padding: '10px 16px',
-                   borderRadius: 8, fontSize: 13, marginBottom: 16 },
+                   borderRadius: 8, fontSize: 13, marginBottom: 16,
+                   display: 'flex', alignItems: 'center', gap: 8 },
+  bannerIcon: { width: 15, height: 15, flexShrink: 0 },
   tableWrap: { background: '#fff', borderRadius: 12, overflow: 'hidden',
                boxShadow: '0 2px 8px rgba(0,0,0,0.04)' },
   table: { width: '100%', borderCollapse: 'collapse' },

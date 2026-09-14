@@ -3,6 +3,7 @@ import {
   View, Text, FlatList, StyleSheet,
   ActivityIndicator, RefreshControl, TouchableOpacity
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { paymentsAPI } from '../services/api';
 
 export default function PaymentHistoryScreen({ navigation }) {
@@ -27,10 +28,13 @@ export default function PaymentHistoryScreen({ navigation }) {
   const renderItem = ({ item }) => (
     <View style={styles.txCard}>
       <View style={styles.txLeft}>
-        <Text style={styles.txIcon}>
-          {item.status === 'confirmed' ? '✅' :
-           item.status === 'failed' ? '❌' : '⏳'}
-        </Text>
+        <Feather
+          name={item.status === 'confirmed' ? 'check-circle' :
+                item.status === 'failed' ? 'x-circle' : 'clock'}
+          size={22}
+          color={item.status === 'confirmed' ? '#1A6E3C' :
+                 item.status === 'failed' ? '#C0392B' : '#9CA3AF'}
+        />
         <View>
           <Text style={styles.txLabel}>M-Pesa Top Up</Text>
           <Text style={styles.txRef}>
@@ -70,8 +74,9 @@ export default function PaymentHistoryScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.back}>← Back</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backRow}>
+          <Feather name="arrow-left" size={14} color="#A8D8C0" />
+          <Text style={styles.back}>Back</Text>
         </TouchableOpacity>
         <Text style={styles.title}>Payment History</Text>
       </View>
@@ -103,6 +108,7 @@ const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   header: { backgroundColor: '#1A3A5C', padding: 20, paddingTop: 52,
             flexDirection: 'row', alignItems: 'center', gap: 16 },
+  backRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   back: { color: '#A8D8C0', fontSize: 14 },
   title: { color: '#fff', fontSize: 18, fontWeight: '700' },
   list: { padding: 16 },
@@ -111,7 +117,6 @@ const styles = StyleSheet.create({
             alignItems: 'center', shadowColor: '#000',
             shadowOpacity: 0.04, shadowRadius: 6, elevation: 2 },
   txLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
-  txIcon: { fontSize: 24 },
   txLabel: { fontSize: 14, fontWeight: '600', color: '#1A3A5C' },
   txRef: { fontSize: 11, color: '#9CA3AF', marginTop: 2 },
   txDate: { fontSize: 11, color: '#9CA3AF', marginTop: 1 },

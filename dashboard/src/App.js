@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { FiCheck } from 'react-icons/fi';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { authAPI } from './services/api';
 import Sidebar from './components/Sidebar';
@@ -39,7 +40,9 @@ function LoginPage() {
         <p style={loginStyles.sub}>Partner: Webmasters Kenya</p>
         {['M-Pesa Integration', 'Linear Regression Forecasting',
           'Isolation Forest Anomaly Detection'].map(f => (
-          <p key={f} style={loginStyles.feature}>✓  {f}</p>
+          <p key={f} style={loginStyles.feature}>
+            <FiCheck style={loginStyles.featureIcon} /> {f}
+          </p>
         ))}
       </div>
       <div style={loginStyles.right}>
@@ -117,7 +120,9 @@ const loginStyles = {
   brand: { color: '#fff', fontSize: 32, fontWeight: 700,
            lineHeight: 1.2, margin: 0 },
   sub: { color: '#6B9AB8', fontSize: 14, marginTop: 8 },
-  feature: { color: '#A8D8C0', fontSize: 14, marginTop: 12 },
+  feature: { color: '#A8D8C0', fontSize: 14, marginTop: 12,
+             display: 'flex', alignItems: 'center', gap: 8 },
+  featureIcon: { width: 15, height: 15, flexShrink: 0 },
   right: { flex: 1, background: '#F7F9FC', display: 'flex',
            alignItems: 'center', justifyContent: 'center' },
   card: { background: '#fff', borderRadius: 16, padding: 40,

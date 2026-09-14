@@ -3,6 +3,9 @@ import {
   View, Text, TouchableOpacity,
   StyleSheet, Animated
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
+
+const AnimatedFeather = Animated.createAnimatedComponent(Feather);
 
 export default function LowBalanceAlertScreen({ navigation, route }) {
   const { balance_ksh, student_name } = route.params || {};
@@ -27,11 +30,12 @@ export default function LowBalanceAlertScreen({ navigation, route }) {
 
   return (
     <View style={styles.container}>
-      <Animated.Text
+      <AnimatedFeather
+        name="alert-triangle"
+        size={64}
+        color="#D07020"
         style={[styles.icon, { transform: [{ scale: pulseAnim }] }]}
-      >
-        ⚠️
-      </Animated.Text>
+      />
 
       <Text style={styles.title}>Low Meal Balance</Text>
       <Text style={styles.name}>{student_name}</Text>
@@ -56,7 +60,8 @@ export default function LowBalanceAlertScreen({ navigation, route }) {
         style={styles.topUpBtn}
         onPress={() => navigation.navigate('TopUp')}
       >
-        <Text style={styles.topUpBtnText}>💳 Top Up Now</Text>
+        <Feather name="credit-card" size={16} color="#fff" />
+        <Text style={styles.topUpBtnText}>Top Up Now</Text>
       </TouchableOpacity>
 
       <TouchableOpacity
@@ -73,7 +78,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#FFF7ED',
                justifyContent: 'center', alignItems: 'center',
                padding: 32 },
-  icon: { fontSize: 72, marginBottom: 16 },
+  icon: { marginBottom: 16 },
   title: { fontSize: 26, fontWeight: '700',
            color: '#92400E', textAlign: 'center' },
   name: { fontSize: 16, color: '#6B7280',
@@ -91,7 +96,8 @@ const styles = StyleSheet.create({
              lineHeight: 21, marginBottom: 32 },
   topUpBtn: { backgroundColor: '#D07020', borderRadius: 12,
               paddingVertical: 16, paddingHorizontal: 48,
-              marginBottom: 12 },
+              marginBottom: 12, flexDirection: 'row',
+              alignItems: 'center', justifyContent: 'center', gap: 8 },
   topUpBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   dismissBtn: { padding: 12 },
   dismissText: { color: '#9CA3AF', fontSize: 14 },

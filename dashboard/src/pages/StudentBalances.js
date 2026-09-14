@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { FiSearch, FiAlertCircle, FiXCircle } from 'react-icons/fi';
 import Topbar from '../components/Topbar';
 import { paymentsAPI } from '../services/api';
 
@@ -39,12 +40,15 @@ export default function StudentBalances() {
       />
       <div style={styles.content}>
         <div style={styles.toolbar}>
-          <input
-            style={styles.search}
-            placeholder="🔍  Search student name..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
+          <div style={styles.searchWrap}>
+            <FiSearch style={styles.searchIcon} />
+            <input
+              style={styles.search}
+              placeholder="Search student name..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </div>
           <div style={styles.filters}>
             {['all', 'low', 'zero'].map(f => (
               <button
@@ -55,8 +59,9 @@ export default function StudentBalances() {
                 }}
                 onClick={() => setFilter(f)}
               >
-                {f === 'all' ? 'All' :
-                 f === 'low' ? '⚠️ Low Balance' : '❌ Zero Balance'}
+                {f === 'low' && <FiAlertCircle style={styles.btnIcon} />}
+                {f === 'zero' && <FiXCircle style={styles.btnIcon} />}
+                {f === 'all' ? 'All' : f === 'low' ? 'Low Balance' : 'Zero Balance'}
               </button>
             ))}
           </div>
@@ -124,14 +129,20 @@ const styles = {
   content: { padding: 32 },
   toolbar: { display: 'flex', gap: 16, marginBottom: 20,
              alignItems: 'center', flexWrap: 'wrap' },
+  searchWrap: { position: 'relative', width: 280 },
+  searchIcon: { position: 'absolute', left: 12, top: '50%',
+                transform: 'translateY(-50%)', width: 15, height: 15,
+                color: '#9CA3AF' },
   search: { border: '1px solid #E5E7EB', borderRadius: 8,
-            padding: '10px 16px', fontSize: 14,
-            width: 280, outline: 'none' },
+            padding: '10px 16px 10px 36px', fontSize: 14,
+            width: '100%', outline: 'none', boxSizing: 'border-box' },
   filters: { display: 'flex', gap: 8 },
   filterBtn: { border: '1px solid #E5E7EB', borderRadius: 8,
                padding: '8px 14px', fontSize: 12,
                cursor: 'pointer', background: '#fff',
-               fontWeight: 600, color: '#374151' },
+               fontWeight: 600, color: '#374151', display: 'flex',
+               alignItems: 'center', gap: 6 },
+  btnIcon: { width: 13, height: 13 },
   filterBtnActive: { background: '#1A6E3C',
                      borderColor: '#1A6E3C', color: '#fff' },
   tableWrap: { background: '#fff', borderRadius: 12, overflow: 'hidden',
