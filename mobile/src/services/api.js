@@ -45,6 +45,7 @@ export const mealsAPI = {
   lookup: (query) => api.get(`/meals/lookup/?q=${encodeURIComponent(query)}`),
   serve: (studentId, itemIds) => api.post('/meals/serve/', { student_id: studentId, item_ids: itemIds }),
   menuList: () => api.get('/meals/menu/'),
+  comboList: () => api.get('/meals/combos/'),
   consumption: (mealAccountId) => api.get(`/meals/consumption/${mealAccountId ? `?meal_account_id=${mealAccountId}` : ''}`),
 };
 

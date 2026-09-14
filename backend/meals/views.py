@@ -5,7 +5,7 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from django.db import transaction as db_transaction
 from .models import (MealDistributionEvent, MealAccount,
-                      User, PaymentTransaction, MenuItem)
+                      User, PaymentTransaction, MenuItem, MealCombo)
 from rest_framework import serializers
 from core.permissions import IsKitchenStaff, IsAdminOrBursar, IsSchoolAdmin
 
@@ -19,6 +19,23 @@ class MenuItemSerializer(serializers.ModelSerializer):
 
     def get_price_ksh(self, obj):
         return obj.price_cents / 100
+
+
+class MealComboSerializer(serializers.ModelSerializer):
+    items = MenuItemSerializer(many=True, read_only=True)
+    total_price_cents = serializers.SerializerMethodField()
+    total_price_ksh = serializers.SerializerMethodField()
+
+    class Meta:
+        model = MealCombo
+        fields = ['id', 'name', 'items', 'total_price_cents',
+                  'total_price_ksh', 'is_active']
+
+    def get_total_price_cents(self, obj):
+        return obj.total_price_cents()
+
+    def get_total_price_ksh(self, obj):
+        return obj.total_price_cents() / 100
 
 
 class MealDistributionSerializer(serializers.ModelSerializer):
@@ -130,6 +147,100 @@ class MenuItemDetailView(APIView):
         item.is_active = False
         item.save()
         return Response({'message': f'{item.name} removed from the menu.'})
+
+
+class MealComboListCreateView(APIView):
+    """
+    A named shortcut for a common combination of menu items (e.g.
+    "Lunch Special" = Rice + Beans + Sukuma), so kitchen staff can search
+    for one name instead of picking every item each time. Price is always
+    the live sum of its items — never stored separately.
+    GET  /api/meals/combos/  — active combos for the school (any staff)
+    POST /api/meals/combos/  — create a combo (admin only)
+    Body: { name, item_ids: [1, 2, 3] }
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        combos = MealCombo.objects.filter(
+            school=request.user.school, is_active=True
+        ).prefetch_related('items')
+        return Response(MealComboSerializer(combos, many=True).data)
+
+    def post(self, request):
+        if request.user.role != 'admin':
+            return Response(
+                {'error': 'Only school admins can manage meal combos.'},
+                status=status.HTTP_403_FORBIDDEN)
+
+        name = request.data.get('name', '').strip()
+        item_ids = request.data.get('item_ids') or []
+        if not name:
+            return Response({'error': 'name is required.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if not item_ids:
+            return Response({'error': 'Select at least one item for the combo.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        items = list(MenuItem.objects.filter(
+            id__in=item_ids, school=request.user.school, is_active=True))
+        if len(items) != len(set(item_ids)):
+            return Response(
+                {'error': 'One or more selected items are unavailable.'},
+                status=status.HTTP_400_BAD_REQUEST)
+
+        combo = MealCombo.objects.create(school=request.user.school, name=name)
+        combo.items.set(items)
+        return Response(MealComboSerializer(combo).data,
+                        status=status.HTTP_201_CREATED)
+
+
+class MealComboDetailView(APIView):
+    """
+    PATCH  /api/meals/combos/{id}/ — edit name/items/active (admin only)
+    DELETE /api/meals/combos/{id}/ — deactivate (soft-delete, admin only)
+    """
+    permission_classes = [IsAuthenticated, IsSchoolAdmin]
+
+    def _get_combo(self, request, combo_id):
+        return MealCombo.objects.get(id=combo_id, school=request.user.school)
+
+    def patch(self, request, combo_id):
+        try:
+            combo = self._get_combo(request, combo_id)
+        except MealCombo.DoesNotExist:
+            return Response({'error': 'Meal combo not found.'},
+                            status=status.HTTP_404_NOT_FOUND)
+
+        if 'name' in request.data:
+            combo.name = request.data['name'].strip()
+        if 'item_ids' in request.data:
+            item_ids = request.data['item_ids'] or []
+            if not item_ids:
+                return Response(
+                    {'error': 'Select at least one item for the combo.'},
+                    status=status.HTTP_400_BAD_REQUEST)
+            items = list(MenuItem.objects.filter(
+                id__in=item_ids, school=request.user.school, is_active=True))
+            if len(items) != len(set(item_ids)):
+                return Response(
+                    {'error': 'One or more selected items are unavailable.'},
+                    status=status.HTTP_400_BAD_REQUEST)
+            combo.items.set(items)
+        if 'is_active' in request.data:
+            combo.is_active = bool(request.data['is_active'])
+        combo.save()
+        return Response(MealComboSerializer(combo).data)
+
+    def delete(self, request, combo_id):
+        try:
+            combo = self._get_combo(request, combo_id)
+        except MealCombo.DoesNotExist:
+            return Response({'error': 'Meal combo not found.'},
+                            status=status.HTTP_404_NOT_FOUND)
+        combo.is_active = False
+        combo.save()
+        return Response({'message': f'{combo.name} removed.'})
 
 
 class RecordMealView(APIView):
