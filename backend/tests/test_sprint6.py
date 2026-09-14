@@ -1,5 +1,5 @@
 from django.test import TestCase
-from meals.models import (School, User, MealAccount, MenuItem,
+from meals.models import (School, User, MealAccount, MenuItem, MealCombo,
                            CreditRequest, SupportIssue,
                            MealDistributionEvent)
 import bcrypt
@@ -179,6 +179,90 @@ class TestMenuServing(TestCase):
         self.assertEqual(res.status_code, 200)
         names = {i['name'] for i in res.json()}
         self.assertEqual(names, {'Rice', 'Beans'})
+
+
+# ════════════════════════════════════════
+# MEAL COMBOS (SEARCHABLE ITEM BUNDLES)
+# ════════════════════════════════════════
+
+class TestMealCombos(TestCase):
+    def setUp(self):
+        self.school = create_school('Combo School', 'combo@test.com')
+        self.admin = create_user(self.school, 'admin', 'Admin', 'comboadmin@test.com')
+        self.admin_token = get_token(self.client, 'comboadmin@test.com')
+        self.kitchen = create_user(self.school, 'kitchen', 'Kitchen', 'combokitchen@test.com')
+        self.kitchen_token = get_token(self.client, 'combokitchen@test.com')
+        self.rice = MenuItem.objects.create(
+            school=self.school, name='Rice', price_cents=3000)
+        self.beans = MenuItem.objects.create(
+            school=self.school, name='Beans', price_cents=3000)
+        self.sukuma = MenuItem.objects.create(
+            school=self.school, name='Sukuma Wiki', price_cents=1000)
+
+    def test_admin_creates_combo(self):
+        res = self.client.post(
+            '/api/meals/combos/',
+            {'name': 'Lunch Special', 'item_ids': [self.rice.id, self.beans.id, self.sukuma.id]},
+            content_type='application/json',
+            HTTP_AUTHORIZATION=f'Bearer {self.admin_token}')
+        self.assertEqual(res.status_code, 201)
+        self.assertEqual(res.json()['total_price_cents'], 7000)
+        combo = MealCombo.objects.get(name='Lunch Special')
+        self.assertEqual(combo.items.count(), 3)
+
+    def test_combo_price_reflects_live_item_prices(self):
+        combo = MealCombo.objects.create(school=self.school, name='Rice & Beans')
+        combo.items.set([self.rice, self.beans])
+        self.assertEqual(combo.total_price_cents(), 6000)
+
+        self.rice.price_cents = 4000
+        self.rice.save()
+        self.assertEqual(combo.total_price_cents(), 7000)  # updated, not stale
+
+    def test_kitchen_can_list_combos(self):
+        combo = MealCombo.objects.create(school=self.school, name='Rice & Beans')
+        combo.items.set([self.rice, self.beans])
+        res = self.client.get(
+            '/api/meals/combos/', HTTP_AUTHORIZATION=f'Bearer {self.kitchen_token}')
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(len(res.json()), 1)
+        self.assertEqual(res.json()[0]['total_price_ksh'], 60.0)
+
+    def test_non_admin_cannot_create_combo(self):
+        res = self.client.post(
+            '/api/meals/combos/',
+            {'name': 'X', 'item_ids': [self.rice.id]},
+            content_type='application/json',
+            HTTP_AUTHORIZATION=f'Bearer {self.kitchen_token}')
+        self.assertEqual(res.status_code, 403)
+
+    def test_admin_can_edit_combo_items(self):
+        combo = MealCombo.objects.create(school=self.school, name='Rice & Beans')
+        combo.items.set([self.rice, self.beans])
+        res = self.client.patch(
+            f'/api/meals/combos/{combo.id}/',
+            {'item_ids': [self.rice.id, self.sukuma.id]},
+            content_type='application/json',
+            HTTP_AUTHORIZATION=f'Bearer {self.admin_token}')
+        self.assertEqual(res.status_code, 200)
+        combo.refresh_from_db()
+        self.assertEqual(set(combo.items.values_list('id', flat=True)),
+                          {self.rice.id, self.sukuma.id})
+
+    def test_admin_can_deactivate_combo(self):
+        combo = MealCombo.objects.create(school=self.school, name='Rice & Beans')
+        combo.items.set([self.rice, self.beans])
+        res = self.client.delete(
+            f'/api/meals/combos/{combo.id}/',
+            content_type='application/json',
+            HTTP_AUTHORIZATION=f'Bearer {self.admin_token}')
+        self.assertEqual(res.status_code, 200)
+        combo.refresh_from_db()
+        self.assertFalse(combo.is_active)
+        # deactivated combos no longer show up for kitchen staff
+        res = self.client.get(
+            '/api/meals/combos/', HTTP_AUTHORIZATION=f'Bearer {self.kitchen_token}')
+        self.assertEqual(res.json(), [])
 
 
 # ════════════════════════════════════════

@@ -12,12 +12,15 @@ export default function ServeMeals() {
   const [lastServed, setLastServed] = useState(null);
 
   const [menuItems, setMenuItems] = useState([]);
+  const [combos, setCombos] = useState([]);
   const [servingStudent, setServingStudent] = useState(null);
   const [selectedItems, setSelectedItems] = useState([]);
+  const [itemSearch, setItemSearch] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     mealsAPI.menuList().then(res => setMenuItems(res.data)).catch(() => {});
+    mealsAPI.comboList().then(res => setCombos(res.data)).catch(() => {});
   }, []);
 
   const runSearch = async (q) => {
@@ -49,6 +52,7 @@ export default function ServeMeals() {
   const openServeModal = (student) => {
     setServingStudent(student);
     setSelectedItems([]);
+    setItemSearch('');
     setError('');
   };
 
@@ -58,10 +62,27 @@ export default function ServeMeals() {
     );
   };
 
+  const addCombo = (combo) => {
+    setSelectedItems(prev => {
+      const comboItemIds = combo.items.map(i => i.id);
+      const merged = new Set(prev);
+      comboItemIds.forEach(id => merged.add(id));
+      return Array.from(merged);
+    });
+  };
+
   const totalCents = selectedItems.reduce((sum, id) => {
     const item = menuItems.find(m => m.id === id);
     return sum + (item ? item.price_cents : 0);
   }, 0);
+
+  const searchLower = itemSearch.trim().toLowerCase();
+  const filteredItems = searchLower
+    ? menuItems.filter(i => i.name.toLowerCase().includes(searchLower))
+    : menuItems;
+  const filteredCombos = searchLower
+    ? combos.filter(c => c.name.toLowerCase().includes(searchLower))
+    : combos;
 
   const handleConfirmServe = async () => {
     if (!servingStudent || selectedItems.length === 0) return;
@@ -172,13 +193,45 @@ export default function ServeMeals() {
         <div style={styles.modalOverlay} onClick={() => setServingStudent(null)}>
           <div style={styles.modal} onClick={e => e.stopPropagation()}>
             <h3 style={styles.modalTitle}>Serve {servingStudent.full_name}</h3>
-            <p style={styles.modalSub}>Select the food items being served</p>
+            <p style={styles.modalSub}>Search a meal or a meal combination, or pick items below</p>
+
+            <input
+              style={styles.itemSearch}
+              placeholder="Search food or combination (e.g. 'Lunch Special')..."
+              value={itemSearch}
+              onChange={e => setItemSearch(e.target.value)}
+              autoFocus
+            />
+
+            {filteredCombos.length > 0 && (
+              <div style={styles.comboSection}>
+                <p style={styles.comboSectionLabel}>Meal Combinations</p>
+                {filteredCombos.map(combo => (
+                  <button
+                    key={combo.id}
+                    type="button"
+                    style={styles.comboBtn}
+                    onClick={() => addCombo(combo)}
+                  >
+                    <span style={styles.comboBtnName}>{combo.name}</span>
+                    <span style={styles.comboBtnSub}>
+                      {combo.items.map(i => i.name).join(', ')}
+                    </span>
+                    <span style={styles.comboBtnPrice}>
+                      KES {combo.total_price_ksh.toFixed(2)}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
 
             {menuItems.length === 0 ? (
               <p style={styles.empty}>No menu items configured yet.</p>
+            ) : filteredItems.length === 0 ? (
+              <p style={styles.empty}>No matching items.</p>
             ) : (
               <div style={styles.itemList}>
-                {menuItems.map(item => (
+                {filteredItems.map(item => (
                   <label key={item.id} style={styles.itemRow}>
                     <input
                       type="checkbox"
@@ -270,6 +323,20 @@ const styles = {
            boxShadow: '0 8px 32px rgba(0,0,0,0.2)' },
   modalTitle: { margin: 0, fontSize: 18, fontWeight: 700, color: '#1A3A5C' },
   modalSub: { margin: '4px 0 16px', fontSize: 13, color: '#6B7280' },
+  itemSearch: { width: '100%', border: '1px solid #E5E7EB', borderRadius: 8,
+                padding: '10px 14px', fontSize: 13, outline: 'none',
+                boxSizing: 'border-box', marginBottom: 14 },
+  comboSection: { marginBottom: 14 },
+  comboSectionLabel: { fontSize: 11, fontWeight: 700, color: '#6B9AB8',
+                       textTransform: 'uppercase', letterSpacing: 0.4,
+                       margin: '0 0 8px' },
+  comboBtn: { display: 'flex', flexDirection: 'column', alignItems: 'flex-start',
+              width: '100%', background: '#EEF0FB', border: '1px solid #C7CDF0',
+              borderRadius: 8, padding: '10px 12px', marginBottom: 6,
+              cursor: 'pointer', textAlign: 'left' },
+  comboBtnName: { fontSize: 13, fontWeight: 700, color: '#3A4AB0' },
+  comboBtnSub: { fontSize: 11, color: '#6B7280', marginTop: 2 },
+  comboBtnPrice: { fontSize: 12, fontWeight: 700, color: '#1A3A5C', marginTop: 4 },
   itemList: { display: 'flex', flexDirection: 'column', gap: 2 },
   itemRow: { display: 'flex', alignItems: 'center', gap: 10,
              padding: '10px 8px', borderBottom: '1px solid #F3F4F6',
