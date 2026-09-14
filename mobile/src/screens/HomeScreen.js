@@ -108,6 +108,40 @@ export default function HomeScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
+      {CAN_VIEW_BALANCE.includes(user?.role) && (
+        <View style={styles.actions}>
+          <TouchableOpacity
+            style={styles.actionBtn}
+            onPress={() => navigation.navigate('MealConsumption')}
+          >
+            <MaterialCommunityIcons name="silverware-fork-knife" size={26} color="#1A6E3C" style={styles.actionIcon} />
+            <Text style={styles.actionLabel}>Meals Eaten</Text>
+          </TouchableOpacity>
+
+          {user?.role === 'parent' && (
+            <TouchableOpacity
+              style={styles.actionBtn}
+              onPress={() => navigation.navigate('ApplyCredit')}
+            >
+              <Feather name="trending-up" size={26} color="#1A6E3C" style={styles.actionIcon} />
+              <Text style={styles.actionLabel}>Apply for Credit</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
+      {user?.role === 'parent' && (
+        <View style={styles.actions}>
+          <TouchableOpacity
+            style={styles.actionBtn}
+            onPress={() => navigation.navigate('RaiseIssue')}
+          >
+            <Feather name="alert-circle" size={26} color="#1A6E3C" style={styles.actionIcon} />
+            <Text style={styles.actionLabel}>Raise an Issue</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
         <Text style={styles.logoutText}>Log out</Text>
       </TouchableOpacity>
