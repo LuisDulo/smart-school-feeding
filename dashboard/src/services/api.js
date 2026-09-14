@@ -44,6 +44,10 @@ export const mealsAPI = {
   menuCreate: (data) => api.post('/meals/menu/', data),
   menuUpdate: (id, data) => api.patch(`/meals/menu/${id}/`, data),
   menuDelete: (id) => api.delete(`/meals/menu/${id}/`),
+  comboList: () => api.get('/meals/combos/'),
+  comboCreate: (data) => api.post('/meals/combos/', data),
+  comboUpdate: (id, data) => api.patch(`/meals/combos/${id}/`, data),
+  comboDelete: (id) => api.delete(`/meals/combos/${id}/`),
 };
 
 export const paymentsAPI = {

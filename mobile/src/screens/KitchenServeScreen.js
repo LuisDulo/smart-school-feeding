@@ -15,12 +15,15 @@ export default function KitchenServeScreen() {
   const [loading, setLoading] = useState(false);
 
   const [menuItems, setMenuItems] = useState([]);
+  const [combos, setCombos] = useState([]);
   const [servingStudent, setServingStudent] = useState(null);
   const [selectedItems, setSelectedItems] = useState([]);
+  const [itemSearch, setItemSearch] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     mealsAPI.menuList().then(res => setMenuItems(res.data)).catch(() => {});
+    mealsAPI.comboList().then(res => setCombos(res.data)).catch(() => {});
   }, []);
 
   const runSearch = useCallback(async (q) => {
@@ -44,6 +47,7 @@ export default function KitchenServeScreen() {
   const openServeModal = (student) => {
     setServingStudent(student);
     setSelectedItems([]);
+    setItemSearch('');
   };
 
   const toggleItem = (itemId) => {
@@ -52,10 +56,27 @@ export default function KitchenServeScreen() {
     );
   };
 
+  const addCombo = (combo) => {
+    setSelectedItems(prev => {
+      const comboItemIds = combo.items.map(i => i.id);
+      const merged = new Set(prev);
+      comboItemIds.forEach(id => merged.add(id));
+      return Array.from(merged);
+    });
+  };
+
   const totalCents = selectedItems.reduce((sum, id) => {
     const item = menuItems.find(m => m.id === id);
     return sum + (item ? item.price_cents : 0);
   }, 0);
+
+  const searchLower = itemSearch.trim().toLowerCase();
+  const filteredItems = searchLower
+    ? menuItems.filter(i => i.name.toLowerCase().includes(searchLower))
+    : menuItems;
+  const filteredCombos = searchLower
+    ? combos.filter(c => c.name.toLowerCase().includes(searchLower))
+    : combos;
 
   const handleConfirmServe = async () => {
     if (!servingStudent || selectedItems.length === 0) return;
@@ -172,15 +193,46 @@ export default function KitchenServeScreen() {
         <View style={styles.modalOverlay}>
           <View style={styles.modal}>
             <Text style={styles.modalTitle}>Serve {servingStudent?.full_name}</Text>
-            <Text style={styles.modalSub}>Select the food items being served</Text>
+            <Text style={styles.modalSub}>Search a meal or a meal combination, or pick items below</Text>
+
+            <TextInput
+              style={styles.itemSearchInput}
+              placeholder="Search food or combination..."
+              placeholderTextColor="#9CA3AF"
+              value={itemSearch}
+              onChangeText={setItemSearch}
+            />
+
+            {filteredCombos.length > 0 && (
+              <View style={styles.comboSection}>
+                <Text style={styles.comboSectionLabel}>MEAL COMBINATIONS</Text>
+                {filteredCombos.map(combo => (
+                  <TouchableOpacity
+                    key={combo.id}
+                    style={styles.comboBtn}
+                    onPress={() => addCombo(combo)}
+                  >
+                    <Text style={styles.comboBtnName}>{combo.name}</Text>
+                    <Text style={styles.comboBtnSub}>
+                      {combo.items.map(i => i.name).join(', ')}
+                    </Text>
+                    <Text style={styles.comboBtnPrice}>
+                      KES {combo.total_price_ksh.toFixed(2)}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
 
             {menuItems.length === 0 ? (
               <Text style={styles.emptyText}>No menu items configured yet.</Text>
+            ) : filteredItems.length === 0 ? (
+              <Text style={styles.emptyText}>No matching items.</Text>
             ) : (
               <FlatList
-                data={menuItems}
+                data={filteredItems}
                 keyExtractor={item => String(item.id)}
-                style={{ maxHeight: 260 }}
+                style={{ maxHeight: 220 }}
                 renderItem={({ item }) => {
                   const checked = selectedItems.includes(item.id);
                   return (
@@ -259,7 +311,18 @@ const styles = StyleSheet.create({
   modal: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20,
            padding: 24, maxHeight: '80%' },
   modalTitle: { fontSize: 18, fontWeight: '700', color: '#1A3A5C' },
-  modalSub: { fontSize: 13, color: '#6B7280', marginTop: 4, marginBottom: 16 },
+  modalSub: { fontSize: 13, color: '#6B7280', marginTop: 4, marginBottom: 12 },
+  itemSearchInput: { backgroundColor: '#F7F9FC', borderWidth: 1, borderColor: '#E5E7EB',
+                     borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10,
+                     fontSize: 13, color: '#111827', marginBottom: 12 },
+  comboSection: { marginBottom: 12 },
+  comboSectionLabel: { fontSize: 10, fontWeight: '700', color: '#6B9AB8',
+                       letterSpacing: 0.4, marginBottom: 6 },
+  comboBtn: { backgroundColor: '#EEF0FB', borderWidth: 1, borderColor: '#C7CDF0',
+              borderRadius: 8, padding: 10, marginBottom: 6 },
+  comboBtnName: { fontSize: 13, fontWeight: '700', color: '#3A4AB0' },
+  comboBtnSub: { fontSize: 11, color: '#6B7280', marginTop: 2 },
+  comboBtnPrice: { fontSize: 12, fontWeight: '700', color: '#1A3A5C', marginTop: 4 },
   itemRow: { flexDirection: 'row', alignItems: 'center', gap: 10,
              paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
   itemName: { flex: 1, fontSize: 14, color: '#374151' },

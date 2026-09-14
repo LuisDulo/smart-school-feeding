@@ -109,6 +109,30 @@ class MenuItem(models.Model):
         ordering = ['name']
 
 
+class MealCombo(models.Model):
+    """A named shortcut for a common combination of menu items, e.g.
+    "Lunch Special" = Rice + Beans + Sukuma. Kitchen staff can search for
+    this by name instead of picking each item individually. Its price is
+    always the live sum of its component items' prices (not stored), so
+    it never drifts out of sync when an admin edits an item's price."""
+    school = models.ForeignKey(
+        School, on_delete=models.CASCADE, related_name='meal_combos')
+    name = models.CharField(max_length=100)
+    items = models.ManyToManyField(MenuItem, related_name='combos')
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def total_price_cents(self):
+        return sum(item.price_cents for item in self.items.all())
+
+    def __str__(self):
+        return f"{self.name} — KES {self.total_price_cents() / 100:.2f}"
+
+    class Meta:
+        db_table = 'meal_combos'
+        ordering = ['name']
+
+
 class PaymentTransaction(models.Model):
     STATUS_CHOICES = [
         ('pending', 'Pending'),
