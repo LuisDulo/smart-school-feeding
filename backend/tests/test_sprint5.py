@@ -1,7 +1,7 @@
 from django.test import TestCase
 from meals.models import (School, User, MealAccount,
                            PaymentTransaction, AnomalyFlag,
-                           MealDistributionEvent)
+                           MealDistributionEvent, MenuItem)
 from datetime import date
 import bcrypt
 import json
@@ -204,10 +204,9 @@ class TestPayments(TestCase):
 
     def test_parent_can_view_balance_and_history(self):
         # A parent has no meal_account of their own — balance/history must
-        # resolve to their child's account instead of 404ing (regression:
-        # this worked for /initiate/ but not /balance/ or /history/ until
-        # resolve_meal_account() was applied consistently everywhere).
-        create_user(self.school, 'parent', 'Parent', 'parent@pay.com')
+        # resolve to their linked child's account instead of 404ing.
+        parent = create_user(self.school, 'parent', 'Parent', 'parent@pay.com')
+        self.meal_account.guardians.add(parent)
         token = get_token(self.client, 'parent@pay.com')
 
         balance_res = self.client.get(
@@ -252,11 +251,13 @@ class TestMealDistribution(TestCase):
             self.school, 'kitchen',
             'Kitchen', 'mealkit@test.com')
         self.token = get_token(self.client, 'mealkit@test.com')
+        self.meal_item = MenuItem.objects.create(
+            school=self.school, name='Standard Meal', price_cents=5000)
 
     def test_record_meal_deducts_5000_cents(self):
         res = self.client.post(
             '/api/meals/serve/',
-            {'student_id': self.student.id},
+            {'student_id': self.student.id, 'item_ids': [self.meal_item.id]},
             content_type='application/json',
             HTTP_AUTHORIZATION=f'Bearer {self.token}')
         self.assertEqual(res.status_code, 201)
@@ -271,7 +272,7 @@ class TestMealDistribution(TestCase):
             meals_served=1)
         res = self.client.post(
             '/api/meals/serve/',
-            {'student_id': self.student.id},
+            {'student_id': self.student.id, 'item_ids': [self.meal_item.id]},
             content_type='application/json',
             HTTP_AUTHORIZATION=f'Bearer {self.token}')
         self.assertEqual(res.status_code, 409)
@@ -281,7 +282,7 @@ class TestMealDistribution(TestCase):
         self.meal_account.save()
         res = self.client.post(
             '/api/meals/serve/',
-            {'student_id': self.student.id},
+            {'student_id': self.student.id, 'item_ids': [self.meal_item.id]},
             content_type='application/json',
             HTTP_AUTHORIZATION=f'Bearer {self.token}')
         self.assertEqual(res.status_code, 402)

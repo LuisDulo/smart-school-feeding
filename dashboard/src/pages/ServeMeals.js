@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FiSearch, FiCheckCircle } from 'react-icons/fi';
 import Topbar from '../components/Topbar';
 import { mealsAPI } from '../services/api';
@@ -8,9 +8,17 @@ export default function ServeMeals() {
   const [students, setStudents] = useState([]);
   const [searched, setSearched] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [servingId, setServingId] = useState(null);
   const [error, setError] = useState('');
   const [lastServed, setLastServed] = useState(null);
+
+  const [menuItems, setMenuItems] = useState([]);
+  const [servingStudent, setServingStudent] = useState(null);
+  const [selectedItems, setSelectedItems] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    mealsAPI.menuList().then(res => setMenuItems(res.data)).catch(() => {});
+  }, []);
 
   const runSearch = async (q) => {
     setQuery(q);
@@ -38,21 +46,37 @@ export default function ServeMeals() {
     }
   };
 
-  const handleServe = async (student) => {
-    if (!window.confirm(
-      `Serve a meal to ${student.full_name}? KES 50.00 will be deducted ` +
-      `(balance: KES ${student.balance_ksh.toFixed(2)}).`
-    )) return;
+  const openServeModal = (student) => {
+    setServingStudent(student);
+    setSelectedItems([]);
+    setError('');
+  };
 
-    setServingId(student.id);
+  const toggleItem = (itemId) => {
+    setSelectedItems(prev =>
+      prev.includes(itemId) ? prev.filter(id => id !== itemId) : [...prev, itemId]
+    );
+  };
+
+  const totalCents = selectedItems.reduce((sum, id) => {
+    const item = menuItems.find(m => m.id === id);
+    return sum + (item ? item.price_cents : 0);
+  }, 0);
+
+  const handleConfirmServe = async () => {
+    if (!servingStudent || selectedItems.length === 0) return;
+    setSubmitting(true);
+    setError('');
     try {
-      const res = await mealsAPI.serve(student.id);
+      const res = await mealsAPI.serve(servingStudent.id, selectedItems);
       setLastServed(res.data);
+      setServingStudent(null);
+      setSelectedItems([]);
       runSearch(query);
     } catch (e) {
       setError(e.response?.data?.error || 'Could not record meal.');
     } finally {
-      setServingId(null);
+      setSubmitting(false);
     }
   };
 
@@ -60,7 +84,7 @@ export default function ServeMeals() {
     <div style={styles.page}>
       <Topbar
         title="Serve Meals"
-        subtitle="Search a student and record a meal"
+        subtitle="Search a student, pick what they took, and record it"
       />
       <div style={styles.content}>
         <div style={styles.searchWrap}>
@@ -79,7 +103,9 @@ export default function ServeMeals() {
           <div style={styles.successBanner}>
             <FiCheckCircle style={styles.bannerIcon} />
             Meal recorded for <strong>{lastServed.student}</strong> —
+            {' '}{lastServed.items.join(', ')} — KES {lastServed.deducted_ksh.toFixed(2)} deducted,
             new balance KES {lastServed.new_balance_ksh.toFixed(2)}
+            {' '}(served by {lastServed.served_by})
           </div>
         )}
 
@@ -110,12 +136,15 @@ export default function ServeMeals() {
                     color: s.is_low_balance ? '#C0392B' : '#1A3A5C'
                   }}>
                     {s.balance_ksh.toLocaleString('en-KE', { minimumFractionDigits: 2 })}
+                    {s.credit_limit_ksh > 0 && (
+                      <span style={styles.creditNote}>
+                        {' '}(+KES {s.credit_limit_ksh.toFixed(2)} credit)
+                      </span>
+                    )}
                   </td>
                   <td style={styles.td}>
                     {s.already_served_today ? (
                       <span style={styles.badgeServed}>Already served</span>
-                    ) : s.is_low_balance ? (
-                      <span style={styles.badgeLow}>Low balance</span>
                     ) : (
                       <span style={styles.badgeOk}>Eligible</span>
                     )}
@@ -124,12 +153,12 @@ export default function ServeMeals() {
                     <button
                       style={{
                         ...styles.serveBtn,
-                        ...(!s.eligible || servingId === s.id ? styles.serveBtnDisabled : {})
+                        ...(!s.eligible ? styles.serveBtnDisabled : {})
                       }}
-                      disabled={!s.eligible || servingId === s.id}
-                      onClick={() => handleServe(s)}
+                      disabled={!s.eligible}
+                      onClick={() => openServeModal(s)}
                     >
-                      {servingId === s.id ? 'Serving...' : 'Serve Meal'}
+                      Serve Meal
                     </button>
                   </td>
                 </tr>
@@ -138,6 +167,58 @@ export default function ServeMeals() {
           </table>
         </div>
       </div>
+
+      {servingStudent && (
+        <div style={styles.modalOverlay} onClick={() => setServingStudent(null)}>
+          <div style={styles.modal} onClick={e => e.stopPropagation()}>
+            <h3 style={styles.modalTitle}>Serve {servingStudent.full_name}</h3>
+            <p style={styles.modalSub}>Select the food items being served</p>
+
+            {menuItems.length === 0 ? (
+              <p style={styles.empty}>No menu items configured yet.</p>
+            ) : (
+              <div style={styles.itemList}>
+                {menuItems.map(item => (
+                  <label key={item.id} style={styles.itemRow}>
+                    <input
+                      type="checkbox"
+                      checked={selectedItems.includes(item.id)}
+                      onChange={() => toggleItem(item.id)}
+                    />
+                    <span style={styles.itemName}>{item.name}</span>
+                    <span style={styles.itemPrice}>
+                      KES {item.price_ksh.toFixed(2)}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            )}
+
+            <div style={styles.totalRow}>
+              <span>Total</span>
+              <strong>KES {(totalCents / 100).toFixed(2)}</strong>
+            </div>
+
+            {error && <div style={styles.errorBanner}>{error}</div>}
+
+            <div style={styles.modalActions}>
+              <button style={styles.cancelBtn} onClick={() => setServingStudent(null)}>
+                Cancel
+              </button>
+              <button
+                style={{
+                  ...styles.confirmBtn,
+                  ...(selectedItems.length === 0 || submitting ? styles.serveBtnDisabled : {})
+                }}
+                disabled={selectedItems.length === 0 || submitting}
+                onClick={handleConfirmServe}
+              >
+                {submitting ? 'Recording...' : 'Confirm & Record'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -170,6 +251,7 @@ const styles = {
   td: { padding: '14px 20px', fontSize: 13, color: '#374151',
         borderBottom: '1px solid #F3F4F6' },
   empty: { padding: 40, textAlign: 'center', color: '#9CA3AF', fontSize: 14 },
+  creditNote: { fontSize: 11, fontWeight: 500, color: '#6B9AB8' },
   badgeServed: { background: '#F0F4F8', color: '#5A6A7A', padding: '3px 10px',
                  borderRadius: 10, fontSize: 11, fontWeight: 700 },
   badgeLow: { background: '#FEF3C7', color: '#D07020', padding: '3px 10px',
@@ -180,4 +262,27 @@ const styles = {
               borderRadius: 8, padding: '8px 16px', fontSize: 12,
               fontWeight: 600, cursor: 'pointer' },
   serveBtnDisabled: { background: '#CBD5E1', cursor: 'not-allowed' },
+  modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                  background: 'rgba(0,0,0,0.4)', display: 'flex',
+                  alignItems: 'center', justifyContent: 'center', zIndex: 100 },
+  modal: { background: '#fff', borderRadius: 12, padding: 28, width: 420,
+           maxHeight: '80vh', overflow: 'auto',
+           boxShadow: '0 8px 32px rgba(0,0,0,0.2)' },
+  modalTitle: { margin: 0, fontSize: 18, fontWeight: 700, color: '#1A3A5C' },
+  modalSub: { margin: '4px 0 16px', fontSize: 13, color: '#6B7280' },
+  itemList: { display: 'flex', flexDirection: 'column', gap: 2 },
+  itemRow: { display: 'flex', alignItems: 'center', gap: 10,
+             padding: '10px 8px', borderBottom: '1px solid #F3F4F6',
+             cursor: 'pointer', fontSize: 14 },
+  itemName: { flex: 1, color: '#374151' },
+  itemPrice: { color: '#1A3A5C', fontWeight: 600, fontSize: 13 },
+  totalRow: { display: 'flex', justifyContent: 'space-between',
+              padding: '16px 8px 0', fontSize: 15, color: '#1A3A5C' },
+  modalActions: { display: 'flex', gap: 10, marginTop: 20 },
+  cancelBtn: { flex: 1, background: '#F3F4F6', color: '#374151', border: 'none',
+               borderRadius: 8, padding: '10px 16px', fontSize: 13,
+               fontWeight: 600, cursor: 'pointer' },
+  confirmBtn: { flex: 1, background: '#1A6E3C', color: '#fff', border: 'none',
+                borderRadius: 8, padding: '10px 16px', fontSize: 13,
+                fontWeight: 600, cursor: 'pointer' },
 };

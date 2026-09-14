@@ -1,16 +1,20 @@
 import React from 'react';
 import {
   FiHome, FiUsers, FiTrendingUp, FiAlertTriangle,
-  FiClipboard, FiLogOut
+  FiClipboard, FiLogOut, FiUserPlus, FiCreditCard, FiHelpCircle
 } from 'react-icons/fi';
-import { MdOutlineRestaurant, MdOutlineSchool, MdOutlineRoomService } from 'react-icons/md';
+import { MdOutlineRestaurant, MdOutlineSchool, MdOutlineRoomService, MdOutlineMenuBook } from 'react-icons/md';
 import { useAuth } from '../context/AuthContext';
 
 const NAV_ITEMS = [
   { key: 'dashboard',  label: 'Dashboard',        Icon: FiHome },
   { key: 'balances',   label: 'Student Balances',  Icon: FiUsers },
   { key: 'serve',      label: 'Serve Meals',       Icon: MdOutlineRoomService },
+  { key: 'menu',       label: 'Menu Management',   Icon: MdOutlineMenuBook },
   { key: 'meals',      label: 'Meal Distribution', Icon: MdOutlineRestaurant },
+  { key: 'accounts',   label: 'Account Management', Icon: FiUserPlus },
+  { key: 'credit',     label: 'Credit Requests',   Icon: FiCreditCard },
+  { key: 'issues',     label: 'Support Issues',    Icon: FiHelpCircle },
   { key: 'forecast',   label: 'Demand Forecast',   Icon: FiTrendingUp },
   { key: 'anomalies',  label: 'Anomaly Flags',     Icon: FiAlertTriangle },
   { key: 'reports',    label: 'Reports',           Icon: FiClipboard },

@@ -1,7 +1,7 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, FlatList,
-  StyleSheet, ActivityIndicator, Alert
+  StyleSheet, ActivityIndicator, Alert, Modal
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
@@ -13,7 +13,15 @@ export default function KitchenServeScreen() {
   const [students, setStudents] = useState([]);
   const [searched, setSearched] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [servingId, setServingId] = useState(null);
+
+  const [menuItems, setMenuItems] = useState([]);
+  const [servingStudent, setServingStudent] = useState(null);
+  const [selectedItems, setSelectedItems] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    mealsAPI.menuList().then(res => setMenuItems(res.data)).catch(() => {});
+  }, []);
 
   const runSearch = useCallback(async (q) => {
     if (!q || q.trim().length < 2) {
@@ -33,32 +41,41 @@ export default function KitchenServeScreen() {
     }
   }, []);
 
-  const handleServe = (student) => {
-    Alert.alert(
-      'Confirm meal',
-      `Serve a meal to ${student.full_name}?\nKES 50.00 will be deducted (balance: KES ${student.balance_ksh.toFixed(2)}).`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Serve',
-          onPress: async () => {
-            setServingId(student.id);
-            try {
-              const res = await mealsAPI.serve(student.id);
-              Alert.alert(
-                'Meal recorded',
-                `${res.data.student} — new balance KES ${res.data.new_balance_ksh.toFixed(2)}`
-              );
-              runSearch(query);
-            } catch (e) {
-              Alert.alert('Could not record meal', e.response?.data?.error || 'Please try again.');
-            } finally {
-              setServingId(null);
-            }
-          }
-        }
-      ]
+  const openServeModal = (student) => {
+    setServingStudent(student);
+    setSelectedItems([]);
+  };
+
+  const toggleItem = (itemId) => {
+    setSelectedItems(prev =>
+      prev.includes(itemId) ? prev.filter(id => id !== itemId) : [...prev, itemId]
     );
+  };
+
+  const totalCents = selectedItems.reduce((sum, id) => {
+    const item = menuItems.find(m => m.id === id);
+    return sum + (item ? item.price_cents : 0);
+  }, 0);
+
+  const handleConfirmServe = async () => {
+    if (!servingStudent || selectedItems.length === 0) return;
+    setSubmitting(true);
+    try {
+      const res = await mealsAPI.serve(servingStudent.id, selectedItems);
+      setServingStudent(null);
+      setSelectedItems([]);
+      Alert.alert(
+        'Meal recorded',
+        `${res.data.student} — ${res.data.items.join(', ')}\n` +
+        `KES ${res.data.deducted_ksh.toFixed(2)} deducted, new balance KES ${res.data.new_balance_ksh.toFixed(2)}\n` +
+        `Served by ${res.data.served_by}`
+      );
+      runSearch(query);
+    } catch (e) {
+      Alert.alert('Could not record meal', e.response?.data?.error || 'Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleLogout = () => {
@@ -69,13 +86,16 @@ export default function KitchenServeScreen() {
   };
 
   const renderItem = ({ item }) => {
-    const disabled = !item.eligible || servingId === item.id;
+    const disabled = !item.eligible;
     return (
       <View style={styles.card}>
         <View style={styles.cardInfo}>
           <Text style={styles.studentName}>{item.full_name}</Text>
           <Text style={styles.studentBalance}>
             KES {item.balance_ksh.toFixed(2)}
+            {item.credit_limit_ksh > 0 && (
+              <Text style={styles.creditNote}> (+KES {item.credit_limit_ksh.toFixed(2)} credit)</Text>
+            )}
           </Text>
           {item.already_served_today && (
             <View style={styles.badgeRow}>
@@ -83,24 +103,15 @@ export default function KitchenServeScreen() {
               <Text style={styles.badgeServed}>Already served today</Text>
             </View>
           )}
-          {!item.already_served_today && item.is_low_balance && (
-            <View style={styles.badgeRow}>
-              <Feather name="alert-circle" size={12} color="#D07020" />
-              <Text style={styles.badgeLow}>Low balance</Text>
-            </View>
-          )}
         </View>
         <TouchableOpacity
           style={[styles.serveBtn, disabled && styles.serveBtnDisabled]}
-          onPress={() => handleServe(item)}
+          onPress={() => openServeModal(item)}
           disabled={disabled}
         >
-          {servingId === item.id
-            ? <ActivityIndicator color="#fff" size="small" />
-            : <Text style={styles.serveBtnText}>
-                {item.already_served_today ? 'Served' : 'Serve'}
-              </Text>
-          }
+          <Text style={styles.serveBtnText}>
+            {item.already_served_today ? 'Served' : 'Serve'}
+          </Text>
         </TouchableOpacity>
       </View>
     );
@@ -151,6 +162,65 @@ export default function KitchenServeScreen() {
           }
         />
       )}
+
+      <Modal
+        visible={!!servingStudent}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setServingStudent(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modal}>
+            <Text style={styles.modalTitle}>Serve {servingStudent?.full_name}</Text>
+            <Text style={styles.modalSub}>Select the food items being served</Text>
+
+            {menuItems.length === 0 ? (
+              <Text style={styles.emptyText}>No menu items configured yet.</Text>
+            ) : (
+              <FlatList
+                data={menuItems}
+                keyExtractor={item => String(item.id)}
+                style={{ maxHeight: 260 }}
+                renderItem={({ item }) => {
+                  const checked = selectedItems.includes(item.id);
+                  return (
+                    <TouchableOpacity style={styles.itemRow} onPress={() => toggleItem(item.id)}>
+                      <Feather
+                        name={checked ? 'check-square' : 'square'}
+                        size={18}
+                        color={checked ? '#1A6E3C' : '#9CA3AF'}
+                      />
+                      <Text style={styles.itemName}>{item.name}</Text>
+                      <Text style={styles.itemPrice}>KES {item.price_ksh.toFixed(2)}</Text>
+                    </TouchableOpacity>
+                  );
+                }}
+              />
+            )}
+
+            <View style={styles.totalRow}>
+              <Text style={styles.totalLabel}>Total</Text>
+              <Text style={styles.totalValue}>KES {(totalCents / 100).toFixed(2)}</Text>
+            </View>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={styles.cancelBtn} onPress={() => setServingStudent(null)}>
+                <Text style={styles.cancelBtnText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.confirmBtn, (selectedItems.length === 0 || submitting) && styles.serveBtnDisabled]}
+                onPress={handleConfirmServe}
+                disabled={selectedItems.length === 0 || submitting}
+              >
+                {submitting
+                  ? <ActivityIndicator color="#fff" size="small" />
+                  : <Text style={styles.confirmBtnText}>Confirm & Record</Text>
+                }
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -175,9 +245,9 @@ const styles = StyleSheet.create({
   cardInfo: { flex: 1 },
   studentName: { fontSize: 15, fontWeight: '700', color: '#1A3A5C' },
   studentBalance: { fontSize: 13, color: '#6B7280', marginTop: 2 },
+  creditNote: { fontSize: 11, color: '#6B9AB8' },
   badgeRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 },
   badgeServed: { fontSize: 12, color: '#1A6E3C', fontWeight: '600' },
-  badgeLow: { fontSize: 12, color: '#D07020', fontWeight: '600' },
   serveBtn: { backgroundColor: '#1A6E3C', borderRadius: 8,
               paddingVertical: 10, paddingHorizontal: 18 },
   serveBtnDisabled: { backgroundColor: '#CBD5E1' },
@@ -185,4 +255,24 @@ const styles = StyleSheet.create({
   empty: { alignItems: 'center', paddingTop: 60 },
   emptyText: { fontSize: 16, fontWeight: '700', color: '#1A3A5C' },
   emptySub: { fontSize: 13, color: '#9CA3AF', marginTop: 6 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  modal: { backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20,
+           padding: 24, maxHeight: '80%' },
+  modalTitle: { fontSize: 18, fontWeight: '700', color: '#1A3A5C' },
+  modalSub: { fontSize: 13, color: '#6B7280', marginTop: 4, marginBottom: 16 },
+  itemRow: { flexDirection: 'row', alignItems: 'center', gap: 10,
+             paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
+  itemName: { flex: 1, fontSize: 14, color: '#374151' },
+  itemPrice: { fontSize: 13, fontWeight: '600', color: '#1A3A5C' },
+  totalRow: { flexDirection: 'row', justifyContent: 'space-between',
+              paddingVertical: 16 },
+  totalLabel: { fontSize: 15, color: '#1A3A5C' },
+  totalValue: { fontSize: 15, fontWeight: '700', color: '#1A3A5C' },
+  modalActions: { flexDirection: 'row', gap: 10, paddingBottom: 12 },
+  cancelBtn: { flex: 1, backgroundColor: '#F3F4F6', borderRadius: 10,
+               paddingVertical: 14, alignItems: 'center' },
+  cancelBtnText: { color: '#374151', fontSize: 14, fontWeight: '600' },
+  confirmBtn: { flex: 1, backgroundColor: '#1A6E3C', borderRadius: 10,
+                paddingVertical: 14, alignItems: 'center' },
+  confirmBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
 });
