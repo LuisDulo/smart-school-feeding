@@ -1,4 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import {
+  FiSettings, FiCheckCircle, FiCalendar, FiSmartphone,
+  FiCheck, FiAlertTriangle
+} from 'react-icons/fi';
 import Topbar from '../components/Topbar';
 import api from '../services/api';
 
@@ -90,7 +94,8 @@ export default function AnomalyFlags() {
                 onClick={handleRunDetection}
                 disabled={running}
               >
-                {running ? '⚙️ Running...' : '⚙️ Run Detection'}
+                <FiSettings style={styles.btnIcon} />
+                {running ? 'Running...' : 'Run Detection'}
               </button>
               <p style={styles.summaryLabel}>Score all transactions</p>
             </div>
@@ -118,7 +123,7 @@ export default function AnomalyFlags() {
           <p style={styles.loading}>Loading flags...</p>
         ) : !data || data.flags.length === 0 ? (
           <div style={styles.empty}>
-            <p>🎉 No flags in this view</p>
+            <p><FiCheckCircle style={styles.emptyIcon} /> No flags in this view</p>
             <p style={{ fontSize: 13, color: '#9CA3AF' }}>
               {filter === 'pending'
                 ? 'All anomaly flags have been reviewed.'
@@ -162,17 +167,20 @@ export default function AnomalyFlags() {
 
               <div style={styles.flagDetails}>
                 <span style={styles.flagDetail}>
-                  📅 {new Date(flag.transaction.created_at)
+                  <FiCalendar style={styles.detailIcon} />
+                  {new Date(flag.transaction.created_at)
                     .toLocaleString('en-KE')}
                 </span>
                 <span style={styles.flagDetail}>
-                  📱 {flag.transaction.mpesa_reference || '—'}
+                  <FiSmartphone style={styles.detailIcon} />
+                  {flag.transaction.mpesa_reference || '—'}
                 </span>
                 {flag.reviewed && (
                   <span style={{
                     ...styles.flagDetail, color: '#1A6E3C'
                   }}>
-                    ✅ Reviewed by {flag.reviewed_by_name}
+                    <FiCheckCircle style={styles.detailIcon} />
+                    Reviewed by {flag.reviewed_by_name}
                     {flag.review_notes &&
                       ` · ${flag.review_notes}`}
                   </span>
@@ -203,14 +211,14 @@ export default function AnomalyFlags() {
                           onClick={() => handleReview(
                             flag.id, 'legitimate')}
                         >
-                          ✓ Mark Legitimate
+                          <FiCheck style={styles.btnIconSm} /> Mark Legitimate
                         </button>
                         <button
                           style={styles.irregularBtn}
                           onClick={() => handleReview(
                             flag.id, 'confirmed_irregular')}
                         >
-                          ⚠ Confirm Irregular
+                          <FiAlertTriangle style={styles.btnIconSm} /> Confirm Irregular
                         </button>
                         <button
                           style={styles.cancelBtn}
@@ -249,7 +257,9 @@ const styles = {
   runBtn: { background: '#1A3A5C', color: '#fff', border: 'none',
             borderRadius: 8, padding: '10px 16px', fontSize: 13,
             fontWeight: 600, cursor: 'pointer', width: '100%',
-            marginBottom: 8 },
+            marginBottom: 8, display: 'flex', alignItems: 'center',
+            justifyContent: 'center', gap: 6 },
+  btnIcon: { width: 14, height: 14 },
   tabs: { display: 'flex', gap: 8, marginBottom: 20 },
   tab: { border: '1px solid #E5E7EB', borderRadius: 8,
          padding: '8px 20px', fontSize: 13, fontWeight: 600,
@@ -259,6 +269,8 @@ const styles = {
   loading: { textAlign: 'center', color: '#9CA3AF', padding: 40 },
   empty: { textAlign: 'center', padding: 60, color: '#6B7280',
            fontSize: 16 },
+  emptyIcon: { width: 20, height: 20, verticalAlign: -4, marginRight: 8,
+               color: '#1A6E3C' },
   flagCard: { background: '#fff', borderRadius: 12,
               padding: 20, marginBottom: 12,
               boxShadow: '0 2px 8px rgba(0,0,0,0.04)' },
@@ -276,7 +288,9 @@ const styles = {
   flagDetails: { display: 'flex', gap: 20, flexWrap: 'wrap',
                  borderTop: '1px solid #F3F4F6', paddingTop: 10,
                  marginTop: 4 },
-  flagDetail: { fontSize: 12, color: '#6B7280' },
+  flagDetail: { fontSize: 12, color: '#6B7280', display: 'flex',
+                alignItems: 'center', gap: 6 },
+  detailIcon: { width: 13, height: 13, flexShrink: 0 },
   flagActions: { marginTop: 12 },
   reviewBtn: { background: '#1A3A5C', color: '#fff', border: 'none',
                borderRadius: 8, padding: '8px 20px', fontSize: 13,
@@ -287,10 +301,13 @@ const styles = {
                 resize: 'vertical', marginBottom: 10,
                 boxSizing: 'border-box' },
   reviewBtns: { display: 'flex', gap: 10 },
+  btnIconSm: { width: 13, height: 13 },
   legitimateBtn: { background: '#1A6E3C', color: '#fff', border: 'none',
                    borderRadius: 8, padding: '8px 16px',
-                   fontSize: 13, fontWeight: 600, cursor: 'pointer' },
+                   fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                   display: 'flex', alignItems: 'center', gap: 6 },
   irregularBtn: { background: '#C0392B', color: '#fff', border: 'none',
+                  display: 'flex', alignItems: 'center', gap: 6,
                   borderRadius: 8, padding: '8px 16px',
                   fontSize: 13, fontWeight: 600, cursor: 'pointer' },
   cancelBtn: { background: '#fff', color: '#374151',

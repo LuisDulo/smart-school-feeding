@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { FiUsers, FiBarChart2 } from 'react-icons/fi';
+import { MdOutlineRestaurant } from 'react-icons/md';
 import Topbar from '../components/Topbar';
 import { mealsAPI } from '../services/api';
 
@@ -39,13 +41,16 @@ export default function MealDistribution() {
           {log && (
             <div style={styles.summary}>
               <span style={styles.summaryItem}>
-                🍽️ <strong>{log.total_meals_served}</strong> meals served
+                <MdOutlineRestaurant style={styles.summaryIcon} />
+                <strong>{log.total_meals_served}</strong> meals served
               </span>
               <span style={styles.summaryItem}>
-                👥 <strong>{log.enrolment}</strong> enrolled
+                <FiUsers style={styles.summaryIcon} />
+                <strong>{log.enrolment}</strong> enrolled
               </span>
               <span style={styles.summaryItem}>
-                📊 <strong>
+                <FiBarChart2 style={styles.summaryIcon} />
+                <strong>
                   {(log.attendance_rate * 100).toFixed(1)}%
                 </strong> attendance
               </span>
@@ -113,7 +118,9 @@ const styles = {
   summary: { display: 'flex', gap: 20 },
   summaryItem: { fontSize: 13, color: '#374151',
                  background: '#fff', padding: '8px 16px',
-                 borderRadius: 8, border: '1px solid #E5E7EB' },
+                 borderRadius: 8, border: '1px solid #E5E7EB',
+                 display: 'flex', alignItems: 'center', gap: 8 },
+  summaryIcon: { width: 15, height: 15, color: '#6B7280', flexShrink: 0 },
   tableWrap: { background: '#fff', borderRadius: 12, overflow: 'hidden',
                boxShadow: '0 2px 8px rgba(0,0,0,0.04)' },
   table: { width: '100%', borderCollapse: 'collapse' },

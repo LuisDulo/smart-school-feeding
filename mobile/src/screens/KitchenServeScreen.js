@@ -3,6 +3,7 @@ import {
   View, Text, TextInput, TouchableOpacity, FlatList,
   StyleSheet, ActivityIndicator, Alert
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { mealsAPI } from '../services/api';
 
@@ -77,10 +78,16 @@ export default function KitchenServeScreen() {
             KES {item.balance_ksh.toFixed(2)}
           </Text>
           {item.already_served_today && (
-            <Text style={styles.badgeServed}>✅ Already served today</Text>
+            <View style={styles.badgeRow}>
+              <Feather name="check-circle" size={12} color="#1A6E3C" />
+              <Text style={styles.badgeServed}>Already served today</Text>
+            </View>
           )}
           {!item.already_served_today && item.is_low_balance && (
-            <Text style={styles.badgeLow}>⚠️ Low balance</Text>
+            <View style={styles.badgeRow}>
+              <Feather name="alert-circle" size={12} color="#D07020" />
+              <Text style={styles.badgeLow}>Low balance</Text>
+            </View>
           )}
         </View>
         <TouchableOpacity
@@ -168,8 +175,9 @@ const styles = StyleSheet.create({
   cardInfo: { flex: 1 },
   studentName: { fontSize: 15, fontWeight: '700', color: '#1A3A5C' },
   studentBalance: { fontSize: 13, color: '#6B7280', marginTop: 2 },
-  badgeServed: { fontSize: 12, color: '#1A6E3C', marginTop: 4, fontWeight: '600' },
-  badgeLow: { fontSize: 12, color: '#D07020', marginTop: 4, fontWeight: '600' },
+  badgeRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 },
+  badgeServed: { fontSize: 12, color: '#1A6E3C', fontWeight: '600' },
+  badgeLow: { fontSize: 12, color: '#D07020', fontWeight: '600' },
   serveBtn: { backgroundColor: '#1A6E3C', borderRadius: 8,
               paddingVertical: 10, paddingHorizontal: 18 },
   serveBtnDisabled: { backgroundColor: '#CBD5E1' },
