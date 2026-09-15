@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FiCheck, FiX } from 'react-icons/fi';
 import Topbar from '../components/Topbar';
 import { paymentsAPI } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 const FILTERS = [
   { key: '', label: 'All' },
@@ -11,6 +12,8 @@ const FILTERS = [
 ];
 
 export default function CreditRequests() {
+  const { user } = useAuth();
+  const canReview = user?.role === 'admin';
   const [filter, setFilter] = useState('pending');
   const [requests, setRequests] = useState([]);
   const [pendingCount, setPendingCount] = useState(0);
@@ -53,7 +56,12 @@ export default function CreditRequests() {
 
   return (
     <div style={styles.page}>
-      <Topbar title="Credit Requests" subtitle="Parents applying to raise their child's spending limit — approving does not add real balance" />
+      <Topbar
+        title="Credit Requests"
+        subtitle={canReview
+          ? "Parents applying to raise their child's spending limit — approving does not add real balance"
+          : "Parents applying to raise their child's spending limit (view only — only a school admin can approve or reject)"}
+      />
       <div style={styles.content}>
         <div style={styles.tabs}>
           {FILTERS.map(f => (
@@ -102,22 +110,26 @@ export default function CreditRequests() {
                   </td>
                   <td style={styles.td}>
                     {r.status === 'pending' && (
-                      <div style={{ display: 'flex', gap: 6 }}>
-                        <button
-                          style={styles.approveBtn}
-                          disabled={reviewingId === r.id}
-                          onClick={() => handleReview(r, 'approved')}
-                        >
-                          <FiCheck style={styles.btnIcon} /> Approve
-                        </button>
-                        <button
-                          style={styles.rejectBtn}
-                          disabled={reviewingId === r.id}
-                          onClick={() => handleReview(r, 'rejected')}
-                        >
-                          <FiX style={styles.btnIcon} /> Reject
-                        </button>
-                      </div>
+                      canReview ? (
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button
+                            style={styles.approveBtn}
+                            disabled={reviewingId === r.id}
+                            onClick={() => handleReview(r, 'approved')}
+                          >
+                            <FiCheck style={styles.btnIcon} /> Approve
+                          </button>
+                          <button
+                            style={styles.rejectBtn}
+                            disabled={reviewingId === r.id}
+                            onClick={() => handleReview(r, 'rejected')}
+                          >
+                            <FiX style={styles.btnIcon} /> Reject
+                          </button>
+                        </div>
+                      ) : (
+                        <span style={styles.viewOnlyNote}>Awaiting admin</span>
+                      )
                     )}
                   </td>
                 </tr>
@@ -168,4 +180,5 @@ const styles = {
                fontWeight: 600, cursor: 'pointer', display: 'flex',
                alignItems: 'center', gap: 4 },
   btnIcon: { width: 12, height: 12 },
+  viewOnlyNote: { fontSize: 11, color: '#9CA3AF', fontStyle: 'italic' },
 };
