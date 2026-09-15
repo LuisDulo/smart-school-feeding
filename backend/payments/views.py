@@ -353,11 +353,14 @@ class ApplyCreditRequestView(APIView):
 
 class CreditRequestQueueView(APIView):
     """
-    Admin's queue of credit requests for their school.
+    Admin and bursar's queue of credit requests for their school — a
+    bursar can see what's pending/approved for financial oversight, but
+    only an admin can actually approve/reject one (see
+    ReviewCreditRequestView below).
     GET /api/payments/credit-requests/queue/
     GET /api/payments/credit-requests/queue/?status=pending
     """
-    permission_classes = [IsAuthenticated, IsSchoolAdmin]
+    permission_classes = [IsAuthenticated, IsAdminOrBursar]
 
     def get(self, request):
         requests_qs = CreditRequest.objects.filter(

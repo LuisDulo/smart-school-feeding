@@ -36,6 +36,17 @@ class RaiseIssueView(APIView):
             # Silently ignore an id that isn't actually one of this
             # parent's linked children rather than 400ing — the issue is
             # still worth logging without a student attached.
+        else:
+            # The mobile app doesn't ask which child an issue is about —
+            # default to the parent's (first) linked child, same as
+            # balance/history/credit-requests already do, so the admin
+            # queue shows which student the issue concerns without
+            # requiring an extra picker in the UI.
+            from payments.views import resolve_meal_account
+            try:
+                meal_account = resolve_meal_account(request.user)
+            except MealAccount.DoesNotExist:
+                meal_account = None
 
         issue = SupportIssue.objects.create(
             raised_by=request.user,

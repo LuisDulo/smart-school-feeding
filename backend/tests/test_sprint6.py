@@ -337,6 +337,28 @@ class TestCreditRequests(TestCase):
             HTTP_AUTHORIZATION=f'Bearer {self.admin_token}')
         self.assertEqual(res.status_code, 403)
 
+    def test_bursar_can_view_queue_but_not_review(self):
+        # Bursars need visibility into credit requests for financial
+        # oversight, but only an admin may actually approve/reject one.
+        bursar = create_user(self.school, 'bursar', 'Bursar', 'creditbursar@test.com')
+        bursar_token = get_token(self.client, 'creditbursar@test.com')
+        req = CreditRequest.objects.create(
+            meal_account=self.meal_account, requested_by=self.parent,
+            requested_amount_cents=20000)
+
+        res = self.client.get(
+            '/api/payments/credit-requests/queue/',
+            HTTP_AUTHORIZATION=f'Bearer {bursar_token}')
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.json()['total'], 1)
+
+        res = self.client.post(
+            f'/api/payments/credit-requests/{req.id}/review/',
+            {'action': 'approved'},
+            content_type='application/json',
+            HTTP_AUTHORIZATION=f'Bearer {bursar_token}')
+        self.assertEqual(res.status_code, 403)
+
 
 # ════════════════════════════════════════
 # SUPPORT ISSUES
@@ -360,6 +382,27 @@ class TestSupportIssues(TestCase):
         self.assertEqual(res.status_code, 201)
         self.assertTrue(
             SupportIssue.objects.filter(raised_by=self.parent).exists())
+
+    def test_issue_auto_links_to_parents_child_when_not_specified(self):
+        # The mobile app doesn't ask which child an issue concerns — the
+        # backend should default to the parent's linked child (like
+        # balance/history/credit-requests already do) so the admin queue
+        # can show which student it's about.
+        student = create_user(self.school, 'student', 'Kid', 'issuekid@test.com')
+        account = MealAccount.objects.create(student=student, balance_cents=0)
+        account.guardians.add(self.parent)
+
+        res = self.client.post(
+            '/api/support/issues/',
+            {'category': 'meal_quality', 'subject': 'Cold food',
+             'description': 'Lunch was cold today.'},
+            content_type='application/json',
+            HTTP_AUTHORIZATION=f'Bearer {self.parent_token}')
+        self.assertEqual(res.status_code, 201)
+        self.assertEqual(res.json()['issue']['student_name'], 'Kid')
+
+        issue = SupportIssue.objects.get(raised_by=self.parent)
+        self.assertEqual(issue.meal_account, account)
 
     def test_admin_sees_issue_in_queue_and_resolves(self):
         issue = SupportIssue.objects.create(
