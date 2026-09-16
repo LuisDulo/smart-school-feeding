@@ -1,3 +1,4 @@
+import uuid
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -97,4 +98,32 @@ class LinkGuardianView(APIView):
         return Response({
             'message': f'{parent.full_name} unlinked from '
                        f'{meal_account.student.full_name}.'
+        })
+
+
+class RegenerateStudentQRView(APIView):
+    """
+    Admin issues a fresh QR code for a student — e.g. their card/wristband
+    was lost or damaged. The old code stops working the instant this
+    runs, since lookup-by-QR matches on the exact token value.
+    POST /api/auth/admin/students/{student_id}/regenerate-qr/
+    """
+    permission_classes = [IsAuthenticated, IsSchoolAdmin]
+
+    def post(self, request, student_id):
+        try:
+            student = User.objects.get(
+                id=student_id, role='student', school=request.user.school)
+            meal_account = student.meal_account
+        except (User.DoesNotExist, MealAccount.DoesNotExist):
+            return Response({'error': 'Student not found.'},
+                            status=status.HTTP_404_NOT_FOUND)
+
+        meal_account.qr_token = uuid.uuid4()
+        meal_account.save(update_fields=['qr_token'])
+        return Response({
+            'message': f'New QR code issued for {student.full_name}. '
+                       f'The old card/wristband no longer works.',
+            'student_id': student.id,
+            'qr_token': str(meal_account.qr_token),
         })
