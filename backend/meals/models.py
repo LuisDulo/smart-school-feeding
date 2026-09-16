@@ -21,6 +21,7 @@ class User(models.Model):
         ('kitchen', 'Kitchen Staff'),
         ('bursar', 'Bursar'),
         ('admin', 'School Admin'),
+        ('superadmin', 'Super Admin'),
     ]
     school = models.ForeignKey(School, on_delete=models.CASCADE,
                                related_name='users')
