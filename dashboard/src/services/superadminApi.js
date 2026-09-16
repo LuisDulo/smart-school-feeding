@@ -13,4 +13,6 @@ export const superAdminAPI = {
   reportCSV:    (type)     => api.get(`/superadmin/reports/${type}/`, {
                                responseType: 'blob' }),
   reportSummary: ()        => api.get('/superadmin/reports/summary/'),
+  adminIssues:  (status)   => api.get(`/support/admin-issues/queue/${status ? `?status=${status}` : ''}`),
+  resolveAdminIssue: (id, data) => api.post(`/support/admin-issues/${id}/resolve/`, data),
 };
