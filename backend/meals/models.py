@@ -1,3 +1,4 @@
+import uuid
 from django.db import models
 
 
@@ -72,6 +73,13 @@ class MealAccount(models.Model):
     # RecordMealView refuses to serve a meal. Raised by an admin approving
     # a CreditRequest; never touched by ordinary top-ups or meal serving.
     credit_limit_cents = models.IntegerField(default=0)
+    # Opaque token printed on the student's physical ID card/wristband as
+    # a QR code, so kitchen staff can scan instead of searching by name.
+    # Deliberately NOT the student's id — a UUID can't be guessed/enumerated
+    # the way a sequential id could if a card is glimpsed or copied. An
+    # admin can reissue this (regenerate-qr) if a card is lost, which
+    # immediately invalidates the old code.
+    qr_token = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
     last_updated = models.DateTimeField(auto_now=True)
 
     def __str__(self):

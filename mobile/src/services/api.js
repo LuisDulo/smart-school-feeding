@@ -43,6 +43,7 @@ export const paymentsAPI = {
 
 export const mealsAPI = {
   lookup: (query) => api.get(`/meals/lookup/?q=${encodeURIComponent(query)}`),
+  lookupByQR: (qrToken) => api.get(`/meals/lookup/?qr=${encodeURIComponent(qrToken)}`),
   serve: (studentId, itemIds) => api.post('/meals/serve/', { student_id: studentId, item_ids: itemIds }),
   menuList: () => api.get('/meals/menu/'),
   comboList: () => api.get('/meals/combos/'),
