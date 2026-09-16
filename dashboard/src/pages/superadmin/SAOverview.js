@@ -3,6 +3,11 @@ import {
   LineChart, Line, XAxis, YAxis,
   CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
+import {
+  FiUsers, FiDollarSign, FiAlertCircle, FiAlertTriangle,
+  FiCreditCard, FiArrowRight, FiCheck
+} from 'react-icons/fi';
+import { MdOutlineSchool, MdOutlineRestaurant } from 'react-icons/md';
 import { superAdminAPI } from '../../services/superadminApi';
 
 const SCHOOL_COLORS = ['#1A6E3C', '#3A4AB0', '#C0392B',
@@ -45,32 +50,34 @@ export default function SAOverview({ onDrillDown }) {
             Webmasters Kenya — All Schools Dashboard
           </p>
         </div>
-        <div style={styles.liveBadge}>&#128994; Live</div>
+        <div style={styles.liveBadge}>
+          <span style={styles.liveDot} /> Live
+        </div>
       </div>
 
       <div style={styles.content}>
         {/* Summary cards */}
         <div style={styles.statsGrid}>
           {[
-            { icon: '🏫', label: 'Total Schools',
+            { Icon: MdOutlineSchool, label: 'Total Schools',
               val: summary.total_schools, color: '#1A3A5C' },
-            { icon: '👥', label: 'Total Students',
+            { Icon: FiUsers, label: 'Total Students',
               val: summary.total_students, color: '#1A6E3C' },
-            { icon: '🍽️', label: 'Meals Today',
+            { Icon: MdOutlineRestaurant, label: 'Meals Today',
               val: summary.meals_today, color: '#3A4AB0' },
-            { icon: '💰', label: 'Collected Today (KES)',
+            { Icon: FiDollarSign, label: 'Collected Today (KES)',
               val: summary.collected_today_ksh?.toLocaleString(),
               color: '#1A6E3C' },
-            { icon: '⚠️', label: 'Low Balance Students',
+            { Icon: FiAlertCircle, label: 'Low Balance Students',
               val: summary.low_balance_total, color: '#D07020' },
-            { icon: '🚨', label: 'Active Anomaly Flags',
+            { Icon: FiAlertTriangle, label: 'Active Anomaly Flags',
               val: summary.active_flags, color: '#C0392B' },
           ].map(s => (
             <div key={s.label}
               style={{ ...styles.statCard,
                        borderTop: `4px solid ${s.color}` }}>
               <div style={styles.statRow}>
-                <span style={styles.statIcon}>{s.icon}</span>
+                <s.Icon style={{ ...styles.statIcon, color: s.color }} />
                 <span style={{ ...styles.statVal, color: s.color }}>
                   {s.val}
                 </span>
@@ -113,9 +120,9 @@ export default function SAOverview({ onDrillDown }) {
             <div style={styles.feedList}>
               {activity_feed.slice(0, 10).map((a, i) => (
                 <div key={i} style={styles.feedItem}>
-                  <span style={styles.feedIcon}>
-                    {a.type === 'meal' ? '🍽️' : '💳'}
-                  </span>
+                  {a.type === 'meal'
+                    ? <MdOutlineRestaurant style={styles.feedIcon} />
+                    : <FiCreditCard style={styles.feedIcon} />}
                   <div style={styles.feedText}>
                     <p style={styles.feedSchool}>{a.school}</p>
                     <p style={styles.feedDesc}>{a.description}</p>
@@ -183,14 +190,15 @@ export default function SAOverview({ onDrillDown }) {
                     fontWeight: 700
                   }}>
                     {s.pending_flags > 0
-                      ? `⚠️ ${s.pending_flags}` : '✓ 0'}
+                      ? <><FiAlertTriangle style={styles.inlineIcon} /> {s.pending_flags}</>
+                      : <><FiCheck style={styles.inlineIcon} /> 0</>}
                   </td>
                   <td style={styles.td}>
                     <button
                       style={styles.drillBtn}
                       onClick={() => onDrillDown(s.id, s.name)}
                     >
-                      View →
+                      View <FiArrowRight style={styles.btnIcon} />
                     </button>
                   </td>
                 </tr>
@@ -218,7 +226,10 @@ const styles = {
   subtitle: { color: '#6B9AB8', fontSize: 13, margin: '4px 0 0' },
   liveBadge: { background: '#1A6E3C', color: '#fff',
                padding: '6px 14px', borderRadius: 20,
-               fontSize: 12, fontWeight: 700 },
+               fontSize: 12, fontWeight: 700,
+               display: 'flex', alignItems: 'center', gap: 6 },
+  liveDot: { width: 8, height: 8, borderRadius: '50%',
+             background: '#4ADE80', display: 'inline-block' },
   content: { padding: 32 },
   statsGrid: { display: 'grid',
                gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
@@ -228,7 +239,7 @@ const styles = {
               boxShadow: '0 2px 8px rgba(0,0,0,0.04)' },
   statRow: { display: 'flex', justifyContent: 'space-between',
              alignItems: 'center', marginBottom: 6 },
-  statIcon: { fontSize: 20 },
+  statIcon: { width: 20, height: 20 },
   statVal: { fontSize: 24, fontWeight: 700 },
   statLabel: { fontSize: 11, color: '#6B7280', margin: 0 },
   chartsRow: { display: 'grid',
@@ -247,7 +258,7 @@ const styles = {
   feedItem: { display: 'flex', alignItems: 'flex-start',
               gap: 10, padding: '8px 0',
               borderBottom: '1px solid #F3F4F6' },
-  feedIcon: { fontSize: 16, marginTop: 2 },
+  feedIcon: { width: 16, height: 16, marginTop: 2, flexShrink: 0, color: '#6B7280' },
   feedText: { flex: 1 },
   feedSchool: { margin: 0, fontSize: 11,
                 fontWeight: 700, color: '#1A3A5C' },
@@ -267,5 +278,8 @@ const styles = {
   drillBtn: { background: '#1A3A5C', color: '#fff',
               border: 'none', borderRadius: 6,
               padding: '6px 12px', fontSize: 11,
-              fontWeight: 700, cursor: 'pointer' },
+              fontWeight: 700, cursor: 'pointer',
+              display: 'inline-flex', alignItems: 'center', gap: 4 },
+  inlineIcon: { width: 12, height: 12, verticalAlign: -1 },
+  btnIcon: { width: 11, height: 11, verticalAlign: -1 },
 };
