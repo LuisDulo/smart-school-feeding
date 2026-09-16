@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { FiCheckCircle, FiArrowRight } from 'react-icons/fi';
+import { MdOutlineSchool } from 'react-icons/md';
 import { superAdminAPI } from '../../services/superadminApi';
 
 export default function SASchools({ onDrillDown }) {
@@ -10,7 +12,8 @@ export default function SASchools({ onDrillDown }) {
     admin_name: '', admin_email: '', admin_password: ''
   });
   const [creating, setCreating] = useState(false);
-  const [msg, setMsg] = useState('');
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
 
   const load = () => {
     setLoading(true);
@@ -26,14 +29,16 @@ export default function SASchools({ onDrillDown }) {
 
   const handleCreate = async () => {
     if (!form.name || !form.county || !form.contact_email) {
-      setMsg('Name, county and contact email are required.');
+      setError('Name, county and contact email are required.');
+      setMessage('');
       return;
     }
     setCreating(true);
-    setMsg('');
+    setError('');
+    setMessage('');
     try {
       await superAdminAPI.createSchool(form);
-      setMsg(`✅ School "${form.name}" created successfully.`);
+      setMessage(`School "${form.name}" created successfully.`);
       setForm({
         name: '', county: '', contact_email: '',
         admin_name: '', admin_email: '', admin_password: ''
@@ -41,7 +46,7 @@ export default function SASchools({ onDrillDown }) {
       setShowCreate(false);
       load();
     } catch (e) {
-      setMsg(e.response?.data?.error || 'Creation failed.');
+      setError(e.response?.data?.error || 'Creation failed.');
     } finally {
       setCreating(false);
     }
@@ -65,15 +70,10 @@ export default function SASchools({ onDrillDown }) {
       </div>
 
       <div style={styles.content}>
-        {msg && (
-          <div style={{
-            ...styles.msg,
-            background: msg.startsWith('✅')
-              ? '#D1FAE5' : '#FEE2E2',
-            color: msg.startsWith('✅')
-              ? '#1A6E3C' : '#C0392B'
-          }}>
-            {msg}
+        {error && <div style={styles.errorMsg}>{error}</div>}
+        {message && (
+          <div style={styles.successMsg}>
+            <FiCheckCircle style={styles.msgIcon} /> {message}
           </div>
         )}
 
@@ -135,7 +135,7 @@ export default function SASchools({ onDrillDown }) {
           ) : schools.map(s => (
             <div key={s.id} style={styles.schoolCard}>
               <div style={styles.schoolHeader}>
-                <span style={styles.schoolIcon}>🏫</span>
+                <MdOutlineSchool style={styles.schoolIcon} />
                 <div>
                   <h4 style={styles.schoolName}>{s.name}</h4>
                   <p style={styles.schoolCounty}>
@@ -186,7 +186,7 @@ export default function SASchools({ onDrillDown }) {
                 style={styles.viewBtn}
                 onClick={() => onDrillDown(s.id, s.name)}
               >
-                View School Dashboard →
+                View School Dashboard <FiArrowRight style={styles.btnIcon} />
               </button>
             </div>
           ))}
@@ -208,8 +208,12 @@ const styles = {
                borderRadius: 8, padding: '10px 20px', fontSize: 13,
                fontWeight: 700, cursor: 'pointer' },
   content: { padding: 32 },
-  msg: { borderRadius: 8, padding: '12px 16px',
-         fontSize: 14, marginBottom: 20 },
+  errorMsg: { background: '#FEE2E2', color: '#C0392B', borderRadius: 8,
+              padding: '12px 16px', fontSize: 14, marginBottom: 20 },
+  successMsg: { background: '#D1FAE5', color: '#1A6E3C', borderRadius: 8,
+                padding: '12px 16px', fontSize: 14, marginBottom: 20,
+                display: 'flex', alignItems: 'center', gap: 8 },
+  msgIcon: { width: 15, height: 15, flexShrink: 0 },
   createForm: { background: '#fff', borderRadius: 12, padding: 24,
                 marginBottom: 24,
                 boxShadow: '0 2px 8px rgba(0,0,0,0.04)' },
@@ -237,7 +241,7 @@ const styles = {
                 boxShadow: '0 2px 8px rgba(0,0,0,0.04)' },
   schoolHeader: { display: 'flex', gap: 12,
                   alignItems: 'flex-start', marginBottom: 16 },
-  schoolIcon: { fontSize: 28 },
+  schoolIcon: { width: 28, height: 28, color: '#1A3A5C', flexShrink: 0 },
   schoolName: { margin: 0, fontSize: 15,
                 fontWeight: 700, color: '#1A3A5C' },
   schoolCounty: { margin: '4px 0 0', fontSize: 11, color: '#6B7280' },
@@ -255,5 +259,7 @@ const styles = {
   viewBtn: { width: '100%', marginTop: 16, background: '#1A3A5C',
              color: '#fff', border: 'none', borderRadius: 8,
              padding: '10px', fontSize: 13, fontWeight: 700,
-             cursor: 'pointer' },
+             cursor: 'pointer', display: 'flex', alignItems: 'center',
+             justifyContent: 'center', gap: 6 },
+  btnIcon: { width: 12, height: 12 },
 };
