@@ -6,22 +6,31 @@ import {
 import { MdOutlineRestaurant, MdOutlineSchool, MdOutlineRoomService, MdOutlineMenuBook } from 'react-icons/md';
 import { useAuth } from '../context/AuthContext';
 
+// `roles` mirrors each page's actual backend permission (see the
+// corresponding view's permission_classes) so a role never sees a nav
+// item that just 403s or silently shows nothing when clicked:
+//  - balances/credit/issues/anomalies/reports -> IsAdminOrBursar
+//  - serve                                    -> IsKitchenStaff
+//  - menu/accounts                            -> IsSchoolAdmin (write);
+//    kept out of kitchen/bursar nav since there's nothing for them to do there
+//  - dashboard/meals/forecast                 -> IsAuthenticated (everyone)
 const NAV_ITEMS = [
-  { key: 'dashboard',  label: 'Dashboard',        Icon: FiHome },
-  { key: 'balances',   label: 'Student Balances',  Icon: FiUsers },
-  { key: 'serve',      label: 'Serve Meals',       Icon: MdOutlineRoomService },
-  { key: 'menu',       label: 'Menu Management',   Icon: MdOutlineMenuBook },
-  { key: 'meals',      label: 'Meal Distribution', Icon: MdOutlineRestaurant },
-  { key: 'accounts',   label: 'Account Management', Icon: FiUserPlus },
-  { key: 'credit',     label: 'Credit Requests',   Icon: FiCreditCard },
-  { key: 'issues',     label: 'Support Issues',    Icon: FiHelpCircle },
-  { key: 'forecast',   label: 'Demand Forecast',   Icon: FiTrendingUp },
-  { key: 'anomalies',  label: 'Anomaly Flags',     Icon: FiAlertTriangle },
-  { key: 'reports',    label: 'Reports',           Icon: FiClipboard },
+  { key: 'dashboard',  label: 'Dashboard',        Icon: FiHome,               roles: ['admin', 'bursar', 'kitchen'] },
+  { key: 'balances',   label: 'Student Balances',  Icon: FiUsers,              roles: ['admin', 'bursar'] },
+  { key: 'serve',      label: 'Serve Meals',       Icon: MdOutlineRoomService, roles: ['kitchen'] },
+  { key: 'menu',       label: 'Menu Management',   Icon: MdOutlineMenuBook,    roles: ['admin'] },
+  { key: 'meals',      label: 'Meal Distribution', Icon: MdOutlineRestaurant,  roles: ['admin', 'bursar', 'kitchen'] },
+  { key: 'accounts',   label: 'Account Management', Icon: FiUserPlus,          roles: ['admin'] },
+  { key: 'credit',     label: 'Credit Requests',   Icon: FiCreditCard,         roles: ['admin', 'bursar'] },
+  { key: 'issues',     label: 'Support Issues',    Icon: FiHelpCircle,         roles: ['admin', 'bursar'] },
+  { key: 'forecast',   label: 'Demand Forecast',   Icon: FiTrendingUp,         roles: ['admin', 'bursar', 'kitchen'] },
+  { key: 'anomalies',  label: 'Anomaly Flags',     Icon: FiAlertTriangle,      roles: ['admin', 'bursar'] },
+  { key: 'reports',    label: 'Reports',           Icon: FiClipboard,         roles: ['admin', 'bursar'] },
 ];
 
 export default function Sidebar({ active, onNavigate, flagCount = 0 }) {
   const { user, logout } = useAuth();
+  const visibleItems = NAV_ITEMS.filter(item => item.roles.includes(user?.role));
 
   return (
     <div style={styles.sidebar}>
@@ -38,7 +47,7 @@ export default function Sidebar({ active, onNavigate, flagCount = 0 }) {
         <p style={styles.schoolRole}>{user?.role} · {user?.full_name}</p>
       </div>
 
-      {NAV_ITEMS.map(item => (
+      {visibleItems.map(item => (
         <div
           key={item.key}
           style={{
