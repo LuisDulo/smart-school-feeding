@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { FiDollarSign, FiDownload } from 'react-icons/fi';
+import { MdOutlineRestaurant } from 'react-icons/md';
 import { superAdminAPI } from '../../services/superadminApi';
 
 export default function SAReports() {
@@ -102,11 +104,11 @@ export default function SAReports() {
         {/* Download buttons */}
         <div style={styles.downloadsGrid}>
           {[
-            { type: 'payments', icon: '💰',
+            { type: 'payments', Icon: FiDollarSign,
               title: 'Network Payment Report',
               desc: 'All M-Pesa transactions across all schools with school column.',
               color: '#1A6E3C', bg: '#D1FAE5' },
-            { type: 'meals', icon: '🍽️',
+            { type: 'meals', Icon: MdOutlineRestaurant,
               title: 'Network Meal Distribution',
               desc: 'All meal events across all schools — total children fed.',
               color: '#3A4AB0', bg: '#EEF0FB' },
@@ -119,7 +121,7 @@ export default function SAReports() {
                 ...styles.dlIcon, background: r.bg,
                 color: r.color
               }}>
-                {r.icon}
+                <r.Icon style={styles.dlIconSvg} />
               </div>
               <h4 style={styles.dlTitle}>{r.title}</h4>
               <p style={styles.dlDesc}>{r.desc}</p>
@@ -129,7 +131,7 @@ export default function SAReports() {
                 }}
                 onClick={() => downloadCSV(r.type)}
               >
-                ⬇ Download CSV
+                <FiDownload style={styles.btnIcon} /> Download CSV
               </button>
             </div>
           ))}
@@ -171,13 +173,17 @@ const styles = {
                   boxShadow: '0 2px 8px rgba(0,0,0,0.04)' },
   dlIcon: { width: 48, height: 48, borderRadius: 12,
             display: 'flex', alignItems: 'center',
-            justifyContent: 'center', fontSize: 24,
+            justifyContent: 'center',
             marginBottom: 16 },
+  dlIconSvg: { width: 24, height: 24 },
   dlTitle: { margin: '0 0 8px', fontSize: 15,
              fontWeight: 700, color: '#1A3A5C' },
   dlDesc: { margin: '0 0 20px', fontSize: 13,
             color: '#6B7280', lineHeight: 1.5 },
   dlBtn: { width: '100%', color: '#fff', border: 'none',
            borderRadius: 8, padding: '12px', fontSize: 14,
-           fontWeight: 700, cursor: 'pointer' },
+           fontWeight: 700, cursor: 'pointer',
+           display: 'flex', alignItems: 'center',
+           justifyContent: 'center', gap: 8 },
+  btnIcon: { width: 14, height: 14 },
 };

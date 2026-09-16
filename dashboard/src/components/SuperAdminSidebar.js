@@ -1,14 +1,19 @@
 import React from 'react';
+import {
+  FiGlobe, FiBarChart2, FiUsers, FiUser,
+  FiAlertTriangle, FiClipboard, FiKey, FiLogOut
+} from 'react-icons/fi';
+import { MdOutlineSchool } from 'react-icons/md';
 import { useAuth } from '../context/AuthContext';
 
 const NAV = [
-  { key: 'overview',   label: 'Overview',         icon: '🌐' },
-  { key: 'schools',    label: 'Schools',           icon: '🏫' },
-  { key: 'analytics',  label: 'Analytics',         icon: '📊' },
-  { key: 'students',   label: 'All Students',      icon: '👥' },
-  { key: 'staff',      label: 'Staff Management',  icon: '👤' },
-  { key: 'anomalies',  label: 'Anomaly Flags',     icon: '🚨' },
-  { key: 'reports',    label: 'Network Reports',   icon: '📋' },
+  { key: 'overview',   label: 'Overview',         Icon: FiGlobe },
+  { key: 'schools',    label: 'Schools',           Icon: MdOutlineSchool },
+  { key: 'analytics',  label: 'Analytics',         Icon: FiBarChart2 },
+  { key: 'students',   label: 'All Students',      Icon: FiUsers },
+  { key: 'staff',      label: 'Staff Management',  Icon: FiUser },
+  { key: 'anomalies',  label: 'Anomaly Flags',     Icon: FiAlertTriangle },
+  { key: 'reports',    label: 'Network Reports',   Icon: FiClipboard },
 ];
 
 export default function SuperAdminSidebar({
@@ -23,7 +28,7 @@ export default function SuperAdminSidebar({
       </div>
 
       <div style={styles.badge}>
-        🔑 SUPERADMIN ACCESS
+        <FiKey style={styles.badgeIcon} /> SUPERADMIN ACCESS
       </div>
 
       {NAV.map(item => (
@@ -35,7 +40,7 @@ export default function SuperAdminSidebar({
           }}
           onClick={() => onNavigate(item.key)}
         >
-          <span style={styles.navIcon}>{item.icon}</span>
+          <item.Icon style={styles.navIcon} />
           <span>{item.label}</span>
           {item.key === 'anomalies' && flagCount > 0 && (
             <span style={styles.flagBadge}>{flagCount}</span>
@@ -44,7 +49,7 @@ export default function SuperAdminSidebar({
       ))}
 
       <div style={styles.logout} onClick={logout}>
-        ← Logout
+        <FiLogOut style={styles.inlineIcon} /> Logout
       </div>
     </div>
   );
@@ -64,19 +69,23 @@ const styles = {
            background: '#1A6E3C', color: '#fff',
            fontSize: 10, fontWeight: 700, padding: '6px 12px',
            borderRadius: 6, textAlign: 'center',
-           letterSpacing: 1 },
+           letterSpacing: 1, display: 'flex',
+           alignItems: 'center', justifyContent: 'center', gap: 6 },
+  badgeIcon: { width: 12, height: 12, flexShrink: 0 },
   navItem: { display: 'flex', alignItems: 'center',
              gap: 10, padding: '12px 20px',
              color: '#8AAFC4', fontSize: 13,
              cursor: 'pointer' },
   navActive: { background: '#1A6E3C',
                color: '#fff', fontWeight: 700 },
-  navIcon: { fontSize: 16 },
+  navIcon: { width: 17, height: 17, flexShrink: 0 },
   flagBadge: { marginLeft: 'auto', background: '#C0392B',
                color: '#fff', fontSize: 10, fontWeight: 700,
                borderRadius: 10, padding: '2px 7px' },
+  inlineIcon: { width: 14, height: 14, verticalAlign: -2, marginRight: 6 },
   logout: { marginTop: 'auto', padding: '16px 20px',
             color: '#4A7A9B', fontSize: 13,
             cursor: 'pointer',
-            borderTop: '1px solid #1A3A5C' },
+            borderTop: '1px solid #1A3A5C',
+            display: 'flex', alignItems: 'center' },
 };

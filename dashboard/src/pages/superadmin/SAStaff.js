@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { FiCheckCircle } from 'react-icons/fi';
 import { superAdminAPI } from '../../services/superadminApi';
 
 const ROLE_LABELS = { admin: 'School Admin', bursar: 'Bursar', kitchen: 'Kitchen Staff' };
@@ -13,7 +14,8 @@ export default function SAStaff() {
     school_id: '', role: 'kitchen', full_name: '', email: '', password: ''
   });
   const [creating, setCreating] = useState(false);
-  const [msg, setMsg] = useState('');
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
 
   const loadSchools = () => superAdminAPI.schools().then(r => setSchools(r.data.schools)).catch(() => {});
   const loadStaff = () => {
@@ -33,19 +35,21 @@ export default function SAStaff() {
   const handleCreate = async (e) => {
     e.preventDefault();
     if (!form.school_id || !form.full_name || !form.email || !form.password) {
-      setMsg('All fields are required.');
+      setError('All fields are required.');
+      setMessage('');
       return;
     }
     setCreating(true);
-    setMsg('');
+    setError('');
+    setMessage('');
     try {
       await superAdminAPI.createStaff(form);
-      setMsg(`✅ ${ROLE_LABELS[form.role]} account created.`);
+      setMessage(`${ROLE_LABELS[form.role]} account created.`);
       setForm({ school_id: '', role: 'kitchen', full_name: '', email: '', password: '' });
       setShowCreate(false);
       loadStaff();
     } catch (e) {
-      setMsg(e.response?.data?.error || 'Could not create account.');
+      setError(e.response?.data?.error || 'Could not create account.');
     } finally {
       setCreating(false);
     }
@@ -64,13 +68,10 @@ export default function SAStaff() {
       </div>
 
       <div style={styles.content}>
-        {msg && (
-          <div style={{
-            ...styles.msg,
-            background: msg.startsWith('✅') ? '#D1FAE5' : '#FEE2E2',
-            color: msg.startsWith('✅') ? '#1A6E3C' : '#C0392B'
-          }}>
-            {msg}
+        {error && <div style={styles.errorMsg}>{error}</div>}
+        {message && (
+          <div style={styles.successMsg}>
+            <FiCheckCircle style={styles.msgIcon} /> {message}
           </div>
         )}
 
@@ -165,7 +166,12 @@ const styles = {
   createBtn: { background: '#1A6E3C', color: '#fff', border: 'none', borderRadius: 8,
                padding: '10px 20px', fontSize: 13, fontWeight: 700, cursor: 'pointer' },
   content: { padding: 32 },
-  msg: { borderRadius: 8, padding: '12px 16px', fontSize: 14, marginBottom: 20 },
+  errorMsg: { background: '#FEE2E2', color: '#C0392B', borderRadius: 8,
+              padding: '12px 16px', fontSize: 14, marginBottom: 20 },
+  successMsg: { background: '#D1FAE5', color: '#1A6E3C', borderRadius: 8,
+                padding: '12px 16px', fontSize: 14, marginBottom: 20,
+                display: 'flex', alignItems: 'center', gap: 8 },
+  msgIcon: { width: 15, height: 15, flexShrink: 0 },
   createForm: { background: '#fff', borderRadius: 12, padding: 24, marginBottom: 24,
                 boxShadow: '0 2px 8px rgba(0,0,0,0.04)' },
   formTitle: { margin: '0 0 20px', fontSize: 16, fontWeight: 700, color: '#1A3A5C' },

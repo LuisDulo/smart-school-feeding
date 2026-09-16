@@ -3,6 +3,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell
 } from 'recharts';
+import { FiCheck } from 'react-icons/fi';
 import { superAdminAPI } from '../../services/superadminApi';
 
 const COLORS = ['#1A6E3C','#3A4AB0','#C0392B','#D07020','#9673a6'];
@@ -155,7 +156,7 @@ export default function SAAnalytics() {
                     {f.avg_mae === null
                       ? <span style={styles.badgeGray}>No forecasts</span>
                       : f.avg_mae < 15
-                      ? <span style={styles.badgeGreen}>✓ On target</span>
+                      ? <span style={styles.badgeGreen}><FiCheck style={styles.badgeIcon} /> On target</span>
                       : <span style={styles.badgeRed}>Above target</span>
                     }
                   </td>
@@ -201,11 +202,13 @@ const styles = {
         color: '#374151', borderBottom: '1px solid #F3F4F6' },
   badgeGreen: { background: '#D1FAE5', color: '#1A6E3C',
                 padding: '3px 10px', borderRadius: 10,
-                fontSize: 11, fontWeight: 700 },
+                fontSize: 11, fontWeight: 700,
+                display: 'inline-flex', alignItems: 'center', gap: 4 },
   badgeRed: { background: '#FEE2E2', color: '#C0392B',
               padding: '3px 10px', borderRadius: 10,
               fontSize: 11, fontWeight: 700 },
   badgeGray: { background: '#F3F4F6', color: '#6B7280',
                padding: '3px 10px', borderRadius: 10,
                fontSize: 11, fontWeight: 700 },
+  badgeIcon: { width: 11, height: 11 },
 };

@@ -3,6 +3,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer
 } from 'recharts';
+import { FiArrowLeft, FiEye, FiCheckCircle, FiAlertTriangle } from 'react-icons/fi';
 import { superAdminAPI } from '../../services/superadminApi';
 
 export default function SASchoolDrillDown({ schoolId, schoolName, onBack }) {
@@ -34,7 +35,7 @@ export default function SASchoolDrillDown({ schoolId, schoolName, onBack }) {
       <div style={styles.topbar}>
         <div>
           <button style={styles.backBtn} onClick={onBack}>
-            ← Back to Network
+            <FiArrowLeft style={styles.btnIcon} /> Back to Network
           </button>
           <h1 style={styles.title}>{school.name}</h1>
           <p style={styles.subtitle}>
@@ -42,7 +43,7 @@ export default function SASchoolDrillDown({ schoolId, schoolName, onBack }) {
           </p>
         </div>
         <div style={styles.viewingBanner}>
-          👁 Impersonation View
+          <FiEye style={styles.btnIcon} /> Impersonation View
         </div>
       </div>
 
@@ -106,7 +107,7 @@ export default function SASchoolDrillDown({ schoolId, schoolName, onBack }) {
             </h3>
             {pending_flags.length === 0 ? (
               <p style={styles.noFlags}>
-                ✅ No pending flags
+                <FiCheckCircle style={styles.btnIcon} /> No pending flags
               </p>
             ) : pending_flags.map(f => (
               <div key={f.id} style={styles.flagItem}>
@@ -164,7 +165,9 @@ export default function SASchoolDrillDown({ schoolId, schoolName, onBack }) {
                   <td style={styles.td}>
                     <span style={s.is_low
                       ? styles.badgeRed : styles.badgeGreen}>
-                      {s.is_low ? '⚠️ Low' : '✓ OK'}
+                      {s.is_low
+                        ? <><FiAlertTriangle style={styles.badgeIcon} /> Low</>
+                        : <><FiCheckCircle style={styles.badgeIcon} /> OK</>}
                     </span>
                   </td>
                 </tr>
@@ -190,13 +193,15 @@ const styles = {
   backBtn: { background: 'transparent', border: '1px solid #4A7A9B',
              color: '#A8D8C0', borderRadius: 6, padding: '6px 12px',
              fontSize: 12, cursor: 'pointer', marginBottom: 8,
-             display: 'block' },
+             display: 'flex', alignItems: 'center', gap: 6 },
   title: { color: '#fff', fontSize: 20,
            fontWeight: 700, margin: 0 },
   subtitle: { color: '#6B9AB8', fontSize: 12, margin: '4px 0 0' },
   viewingBanner: { background: '#D07020', color: '#fff',
                    padding: '8px 16px', borderRadius: 8,
-                   fontSize: 12, fontWeight: 700 },
+                   fontSize: 12, fontWeight: 700,
+                   display: 'flex', alignItems: 'center', gap: 6 },
+  btnIcon: { width: 13, height: 13, flexShrink: 0 },
   content: { padding: 32 },
   statsGrid: { display: 'grid',
                gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
@@ -218,7 +223,8 @@ const styles = {
   flagCount: { background: '#C0392B', color: '#fff',
                fontSize: 10, fontWeight: 700, borderRadius: 10,
                padding: '2px 8px' },
-  noFlags: { color: '#1A6E3C', fontSize: 14, marginTop: 16 },
+  noFlags: { color: '#1A6E3C', fontSize: 14, marginTop: 16,
+             display: 'flex', alignItems: 'center', gap: 6 },
   flagItem: { display: 'flex', justifyContent: 'space-between',
               alignItems: 'center', padding: '10px 0',
               borderBottom: '1px solid #F3F4F6' },
@@ -240,8 +246,11 @@ const styles = {
   empty: { padding: 24, textAlign: 'center', color: '#9CA3AF' },
   badgeGreen: { background: '#D1FAE5', color: '#1A6E3C',
                 padding: '3px 10px', borderRadius: 10,
-                fontSize: 11, fontWeight: 700 },
+                fontSize: 11, fontWeight: 700,
+                display: 'inline-flex', alignItems: 'center', gap: 4 },
   badgeRed: { background: '#FEE2E2', color: '#C0392B',
               padding: '3px 10px', borderRadius: 10,
-              fontSize: 11, fontWeight: 700 },
+              fontSize: 11, fontWeight: 700,
+              display: 'inline-flex', alignItems: 'center', gap: 4 },
+  badgeIcon: { width: 11, height: 11 },
 };
