@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   FiGlobe, FiBarChart2, FiUsers, FiUser,
-  FiAlertTriangle, FiClipboard, FiKey, FiLogOut
+  FiAlertTriangle, FiClipboard, FiKey, FiLogOut, FiInbox
 } from 'react-icons/fi';
 import { MdOutlineSchool } from 'react-icons/md';
 import { useAuth } from '../context/AuthContext';
@@ -13,6 +13,7 @@ const NAV = [
   { key: 'students',   label: 'All Students',      Icon: FiUsers },
   { key: 'staff',      label: 'Staff Management',  Icon: FiUser },
   { key: 'anomalies',  label: 'Anomaly Flags',     Icon: FiAlertTriangle },
+  { key: 'schoolReports', label: 'School Reports', Icon: FiInbox },
   { key: 'reports',    label: 'Network Reports',   Icon: FiClipboard },
 ];
 

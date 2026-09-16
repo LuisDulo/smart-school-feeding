@@ -14,6 +14,7 @@ import MenuManagement from './pages/MenuManagement';
 import AccountManagement from './pages/AccountManagement';
 import CreditRequests from './pages/CreditRequests';
 import SupportIssues from './pages/SupportIssues';
+import PlatformSupport from './pages/PlatformSupport';
 import SuperAdminSidebar from './components/SuperAdminSidebar';
 import SAOverview from './pages/superadmin/SAOverview';
 import SASchools from './pages/superadmin/SASchools';
@@ -22,6 +23,7 @@ import SAReports from './pages/superadmin/SAReports';
 import SAStudents from './pages/superadmin/SAStudents';
 import SAStaff from './pages/superadmin/SAStaff';
 import SAAnomalies from './pages/superadmin/SAAnomalies';
+import SAAdminIssues from './pages/superadmin/SAAdminIssues';
 import SASchoolDrillDown from './pages/superadmin/SASchoolDrillDown';
 
 function LoginPage() {
@@ -99,6 +101,7 @@ const PAGES = {
   forecast: ForecastPage,
   anomalies: AnomalyFlags,
   reports: Reports,
+  platformSupport: PlatformSupport,
 };
 
 function AppInner() {
@@ -137,6 +140,8 @@ function AppInner() {
           return <SAStaff />;
         case 'anomalies':
           return <SAAnomalies />;
+        case 'schoolReports':
+          return <SAAdminIssues />;
         case 'reports':
           return <SAReports />;
         case 'drilldown':
