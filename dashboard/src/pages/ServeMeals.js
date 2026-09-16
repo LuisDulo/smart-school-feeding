@@ -1,7 +1,77 @@
-import React, { useState, useEffect } from 'react';
-import { FiSearch, FiCheckCircle } from 'react-icons/fi';
+import React, { useState, useEffect, useRef } from 'react';
+import { FiSearch, FiCheckCircle, FiCamera, FiX } from 'react-icons/fi';
+import { Html5Qrcode } from 'html5-qrcode';
 import Topbar from '../components/Topbar';
 import { mealsAPI } from '../services/api';
+
+const QR_READER_ID = 'serve-meals-qr-reader';
+
+function QRScannerModal({ onScanned, onClose }) {
+  const [error, setError] = useState('');
+  const activeRef = useRef(true);
+  // Keep the latest callback in a ref rather than a useEffect dependency —
+  // onScanned is a fresh inline function on every parent render, and
+  // re-running this effect would tear down and restart the camera
+  // (visible flicker, or worse, stopping a scanner mid-start) every time
+  // the parent re-renders while the modal is open.
+  const onScannedRef = useRef(onScanned);
+  onScannedRef.current = onScanned;
+
+  useEffect(() => {
+    const scanner = new Html5Qrcode(QR_READER_ID);
+    activeRef.current = true;
+    // React StrictMode double-invokes effects in development (mount ->
+    // cleanup -> mount) specifically to surface bugs like this one:
+    // calling scanner.stop() before start() has actually succeeded
+    // throws "Cannot stop, scanner is not running or paused." Track
+    // unmount separately from activeRef (which is about "have we already
+    // handled a scan") so cleanup can tell whether it's safe to stop, and
+    // so a start() that resolves *after* unmount stops itself immediately
+    // instead of leaving an orphaned camera stream running.
+    let unmounted = false;
+
+    scanner.start(
+      { facingMode: 'environment' },
+      { fps: 10, qrbox: 220 },
+      (decodedText) => {
+        if (!activeRef.current) return;
+        activeRef.current = false;
+        onScannedRef.current(decodedText);
+      },
+      () => { /* per-frame "no code found yet" noise — ignore */ }
+    ).then(() => {
+      if (unmounted) scanner.stop().catch(() => {});
+    }).catch(() => {
+      if (!unmounted) {
+        setError('Could not access the camera. Check browser permissions and try again.');
+      }
+    });
+
+    return () => {
+      unmounted = true;
+      activeRef.current = false;
+      if (scanner.isScanning) {
+        scanner.stop().then(() => scanner.clear()).catch(() => {});
+      }
+    };
+  }, []);
+
+  return (
+    <div style={styles.modalOverlay} onClick={onClose}>
+      <div style={styles.scannerModal} onClick={e => e.stopPropagation()}>
+        <div style={styles.scannerHeader}>
+          <h3 style={styles.modalTitle}>Scan Student QR Code</h3>
+          <button style={styles.scannerCloseBtn} onClick={onClose}>
+            <FiX style={{ width: 18, height: 18 }} />
+          </button>
+        </div>
+        <p style={styles.modalSub}>Point the camera at the student's ID card or wristband</p>
+        {error && <div style={styles.errorBanner}>{error}</div>}
+        <div id={QR_READER_ID} style={styles.qrReader} />
+      </div>
+    </div>
+  );
+}
 
 export default function ServeMeals() {
   const [query, setQuery] = useState('');
@@ -17,11 +87,30 @@ export default function ServeMeals() {
   const [selectedItems, setSelectedItems] = useState([]);
   const [itemSearch, setItemSearch] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
 
   useEffect(() => {
     mealsAPI.menuList().then(res => setMenuItems(res.data)).catch(() => {});
     mealsAPI.comboList().then(res => setCombos(res.data)).catch(() => {});
   }, []);
+
+  const handleQRScanned = async (decodedText) => {
+    setShowScanner(false);
+    setQuery('');
+    setLoading(true);
+    setError('');
+    try {
+      const res = await mealsAPI.lookupByQR(decodedText);
+      setStudents(res.data.students);
+      setSearched(true);
+    } catch (e) {
+      setError(e.response?.data?.error || 'QR code not recognized.');
+      setStudents([]);
+      setSearched(true);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const runSearch = async (q) => {
     setQuery(q);
@@ -108,15 +197,23 @@ export default function ServeMeals() {
         subtitle="Search a student, pick what they took, and record it"
       />
       <div style={styles.content}>
-        <div style={styles.searchWrap}>
-          <FiSearch style={styles.searchIcon} />
-          <input
-            style={styles.search}
-            placeholder="Search student by name..."
-            value={query}
-            onChange={e => runSearch(e.target.value)}
-          />
+        <div style={styles.searchRow}>
+          <div style={styles.searchWrap}>
+            <FiSearch style={styles.searchIcon} />
+            <input
+              style={styles.search}
+              placeholder="Search student by name..."
+              value={query}
+              onChange={e => runSearch(e.target.value)}
+            />
+          </div>
+          <button style={styles.scanBtn} onClick={() => { setError(''); setShowScanner(true); }}>
+            <FiCamera style={styles.btnIcon} /> Scan QR Code
+          </button>
         </div>
+        <p style={styles.scanHint}>
+          Lost or damaged QR card? Search by name above instead.
+        </p>
 
         {error && <div style={styles.errorBanner}>{error}</div>}
 
@@ -272,6 +369,13 @@ export default function ServeMeals() {
           </div>
         </div>
       )}
+
+      {showScanner && (
+        <QRScannerModal
+          onScanned={handleQRScanned}
+          onClose={() => setShowScanner(false)}
+        />
+      )}
     </div>
   );
 }
@@ -280,13 +384,20 @@ const styles = {
   page: { flex: 1, display: 'flex', flexDirection: 'column',
           background: '#F7F9FC', overflow: 'auto' },
   content: { padding: 32 },
-  searchWrap: { position: 'relative', width: 320, marginBottom: 16 },
+  searchRow: { display: 'flex', gap: 10, alignItems: 'center',
+               marginBottom: 8, flexWrap: 'wrap' },
+  searchWrap: { position: 'relative', width: 320 },
   searchIcon: { position: 'absolute', left: 12, top: '50%',
                 transform: 'translateY(-50%)', width: 15, height: 15,
                 color: '#9CA3AF' },
   search: { border: '1px solid #E5E7EB', borderRadius: 8,
             padding: '10px 16px 10px 36px', fontSize: 14,
             width: '100%', outline: 'none', boxSizing: 'border-box' },
+  scanBtn: { background: '#1A3A5C', color: '#fff', border: 'none',
+             borderRadius: 8, padding: '10px 18px', fontSize: 13,
+             fontWeight: 600, cursor: 'pointer', display: 'flex',
+             alignItems: 'center', gap: 8, whiteSpace: 'nowrap' },
+  scanHint: { fontSize: 12, color: '#9CA3AF', margin: '0 0 16px' },
   errorBanner: { background: '#FEE2E2', color: '#C0392B', padding: '10px 16px',
                  borderRadius: 8, fontSize: 13, marginBottom: 16 },
   successBanner: { background: '#D1FAE5', color: '#1A6E3C', padding: '10px 16px',
@@ -352,4 +463,13 @@ const styles = {
   confirmBtn: { flex: 1, background: '#1A6E3C', color: '#fff', border: 'none',
                 borderRadius: 8, padding: '10px 16px', fontSize: 13,
                 fontWeight: 600, cursor: 'pointer' },
+  btnIcon: { width: 15, height: 15, flexShrink: 0 },
+  scannerModal: { background: '#fff', borderRadius: 12, padding: 24, width: 420,
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.2)' },
+  scannerHeader: { display: 'flex', justifyContent: 'space-between',
+                   alignItems: 'flex-start' },
+  scannerCloseBtn: { background: 'transparent', border: 'none', color: '#6B7280',
+                     cursor: 'pointer', padding: 4, display: 'flex' },
+  qrReader: { marginTop: 12, borderRadius: 8, overflow: 'hidden',
+              minHeight: 260, background: '#111' },
 };
