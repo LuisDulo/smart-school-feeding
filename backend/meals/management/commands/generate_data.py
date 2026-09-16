@@ -177,10 +177,13 @@ class Command(BaseCommand):
 
         self.stdout.write(f'Students ready: {len(students)}')
 
-        # Parents
-        for i, (student, _) in enumerate(students[:20]):
+        # Parents — linked to their student's meal account via `guardians`
+        # so a freshly generated dataset is immediately testable end-to-end
+        # (parent login -> balance/history/consumption/credit-requests all
+        # resolve to a real child, not a "meal account not found" 404).
+        for i, (student, meal_account) in enumerate(students[:20]):
             email = f'parent{i+1:02d}@gmail.com'
-            User.objects.get_or_create(
+            parent, _ = User.objects.get_or_create(
                 email=email,
                 defaults={
                     'school': school, 'role': 'parent',
@@ -188,6 +191,7 @@ class Command(BaseCommand):
                     'hashed_password': make_hashed('Parent123!')
                 }
             )
+            meal_account.guardians.add(parent)
 
         # Terms
         terms = [
