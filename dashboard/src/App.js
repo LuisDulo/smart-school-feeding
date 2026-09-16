@@ -14,6 +14,15 @@ import MenuManagement from './pages/MenuManagement';
 import AccountManagement from './pages/AccountManagement';
 import CreditRequests from './pages/CreditRequests';
 import SupportIssues from './pages/SupportIssues';
+import SuperAdminSidebar from './components/SuperAdminSidebar';
+import SAOverview from './pages/superadmin/SAOverview';
+import SASchools from './pages/superadmin/SASchools';
+import SAAnalytics from './pages/superadmin/SAAnalytics';
+import SAReports from './pages/superadmin/SAReports';
+import SAStudents from './pages/superadmin/SAStudents';
+import SAStaff from './pages/superadmin/SAStaff';
+import SAAnomalies from './pages/superadmin/SAAnomalies';
+import SASchoolDrillDown from './pages/superadmin/SASchoolDrillDown';
 
 function LoginPage() {
   const { login } = useAuth();
@@ -93,13 +102,71 @@ const PAGES = {
 };
 
 function AppInner() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [page, setPage] = useState('dashboard');
+
+  // Super admin state
+  const [saPage, setSaPage] = useState('overview');
+  const [drillDownSchool, setDrillDownSchool] = useState(null);
 
   if (!user) return <LoginPage />;
 
-  const PageComponent = PAGES[page] || Dashboard;
+  // Super admin gets a completely separate layout — a different sidebar,
+  // network-wide pages, and no access to any single school's admin pages.
+  if (user.role === 'superadmin') {
+    const handleDrillDown = (schoolId, schoolName) => {
+      setDrillDownSchool({ id: schoolId, name: schoolName });
+      setSaPage('drilldown');
+    };
+    const handleBack = () => {
+      setDrillDownSchool(null);
+      setSaPage('overview');
+    };
 
+    const renderSAPage = () => {
+      switch (saPage) {
+        case 'overview':
+          return <SAOverview onDrillDown={handleDrillDown} />;
+        case 'schools':
+          return <SASchools onDrillDown={handleDrillDown} />;
+        case 'analytics':
+          return <SAAnalytics />;
+        case 'students':
+          return <SAStudents />;
+        case 'staff':
+          return <SAStaff />;
+        case 'anomalies':
+          return <SAAnomalies />;
+        case 'reports':
+          return <SAReports />;
+        case 'drilldown':
+          return drillDownSchool
+            ? <SASchoolDrillDown
+                schoolId={drillDownSchool.id}
+                schoolName={drillDownSchool.name}
+                onBack={handleBack} />
+            : <SAOverview onDrillDown={handleDrillDown} />;
+        default:
+          return <SAOverview onDrillDown={handleDrillDown} />;
+      }
+    };
+
+    return (
+      <div style={{ display: 'flex', height: '100vh',
+                    fontFamily: 'Inter, sans-serif' }}>
+        <SuperAdminSidebar
+          active={saPage}
+          onNavigate={setSaPage}
+        />
+        <div style={{ flex: 1, overflow: 'auto' }}>
+          {renderSAPage()}
+        </div>
+      </div>
+    );
+  }
+
+  // Regular school users — existing layout
+  const PageComponent = PAGES[page] || Dashboard;
   return (
     <div style={{ display: 'flex', height: '100vh',
                   fontFamily: 'Inter, sans-serif' }}>

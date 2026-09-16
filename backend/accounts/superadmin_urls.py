@@ -1,0 +1,38 @@
+from django.urls import path
+from .superadmin_views import (
+    SuperAdminOverviewView,
+    SuperAdminSchoolListView,
+    SuperAdminSchoolDetailView,
+    SuperAdminStudentListView,
+    SuperAdminStaffListView,
+    SuperAdminAnomalyView,
+    SuperAdminAnalyticsView,
+    SuperAdminReportView,
+)
+
+urlpatterns = [
+    path('overview/',
+         SuperAdminOverviewView.as_view(),
+         name='sa-overview'),
+    path('schools/',
+         SuperAdminSchoolListView.as_view(),
+         name='sa-schools'),
+    path('schools/<int:school_id>/',
+         SuperAdminSchoolDetailView.as_view(),
+         name='sa-school-detail'),
+    path('students/',
+         SuperAdminStudentListView.as_view(),
+         name='sa-students'),
+    path('staff/',
+         SuperAdminStaffListView.as_view(),
+         name='sa-staff'),
+    path('anomalies/',
+         SuperAdminAnomalyView.as_view(),
+         name='sa-anomalies'),
+    path('analytics/',
+         SuperAdminAnalyticsView.as_view(),
+         name='sa-analytics'),
+    path('reports/<str:report_type>/',
+         SuperAdminReportView.as_view(),
+         name='sa-reports'),
+]
