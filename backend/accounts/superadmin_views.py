@@ -10,6 +10,7 @@ from meals.models import (
     MealDistributionEvent, AnomalyFlag, DemandForecast
 )
 from core.permissions import IsSuperAdmin
+from core.pagination import paginate_queryset
 
 logger = logging.getLogger(__name__)
 
@@ -376,6 +377,7 @@ class SuperAdminStudentListView(APIView):
     GET /api/superadmin/students/?school_id=1
     GET /api/superadmin/students/?status=low
     GET /api/superadmin/students/?q=John
+    GET /api/superadmin/students/?limit=50&offset=50
     """
     permission_classes = [IsAuthenticated, IsSuperAdmin]
 
@@ -393,20 +395,22 @@ class SuperAdminStudentListView(APIView):
         if q:
             students = students.filter(full_name__icontains=q)
 
+        # Filtered at the ORM level, before pagination, so matches
+        # aren't silently lost past the page slice.
         bal_status = request.query_params.get('status')
+        if bal_status == 'low':
+            students = students.filter(
+                meal_account__balance_cents__lt=10000)
+        elif bal_status == 'zero':
+            students = students.filter(meal_account__balance_cents=0)
+
+        page, meta = paginate_queryset(request, students, default_limit=200)
 
         results = []
-        for s in students[:200]:
+        for s in page:
             try:
                 ma = s.meal_account
                 bal = ma.balance_cents
-                is_low = bal < 10000
-                is_zero = bal == 0
-                if bal_status == 'low' and not is_low:
-                    continue
-                if bal_status == 'zero' and not is_zero:
-                    continue
-
                 last_meal = MealDistributionEvent.objects.filter(
                     meal_account=ma
                 ).order_by('-meal_date').first()
@@ -418,8 +422,8 @@ class SuperAdminStudentListView(APIView):
                     'school': s.school.name,
                     'school_id': s.school_id,
                     'balance_ksh': bal / 100,
-                    'is_low': is_low,
-                    'is_zero': is_zero,
+                    'is_low': bal < 10000,
+                    'is_zero': bal == 0,
                     'last_meal': str(last_meal.meal_date)
                         if last_meal else None,
                 })
@@ -429,6 +433,7 @@ class SuperAdminStudentListView(APIView):
         return Response({
             'students': results,
             'count': len(results),
+            **meta,
         })
 
 
@@ -515,6 +520,7 @@ class SuperAdminAnomalyView(APIView):
     GET /api/superadmin/anomalies/?school_id=1
     GET /api/superadmin/anomalies/?severity=HIGH
     GET /api/superadmin/anomalies/?reviewed=false
+    GET /api/superadmin/anomalies/?limit=50&offset=50
     """
     permission_classes = [IsAuthenticated, IsSuperAdmin]
 
@@ -538,14 +544,27 @@ class SuperAdminAnomalyView(APIView):
         elif reviewed == 'true':
             flags = flags.filter(reviewed=True)
 
+        # Filtered at the ORM level, before pagination, so matches
+        # aren't silently lost past the page slice.
+        sev_filter = request.query_params.get('severity')
+        if sev_filter == 'HIGH':
+            flags = flags.filter(anomaly_score__gte=0.80)
+        elif sev_filter == 'MEDIUM':
+            flags = flags.filter(anomaly_score__gte=0.65,
+                                  anomaly_score__lt=0.80)
+        elif sev_filter == 'LOW':
+            flags = flags.filter(anomaly_score__lt=0.65)
+
+        pending = flags.filter(reviewed=False).count()
+        high = flags.filter(anomaly_score__gte=0.80).count()
+
+        page, meta = paginate_queryset(request, flags, default_limit=200)
+
         result = []
-        for f in flags[:200]:
+        for f in page:
             score = f.anomaly_score
             severity = 'HIGH' if score >= 0.80 else \
                        'MEDIUM' if score >= 0.65 else 'LOW'
-            sev_filter = request.query_params.get('severity')
-            if sev_filter and severity != sev_filter:
-                continue
             result.append({
                 'id': f.id,
                 'school': f.transaction.meal_account
@@ -564,15 +583,12 @@ class SuperAdminAnomalyView(APIView):
                     if f.reviewed_by else None,
             })
 
-        total = flags.count()
-        pending = flags.filter(reviewed=False).count()
-        high = sum(1 for f in flags if f.anomaly_score >= 0.80)
-
         return Response({
-            'total': total,
+            'total': meta['count'],
             'pending': pending,
             'high_severity': high,
             'flags': result,
+            **meta,
         })
 
 
