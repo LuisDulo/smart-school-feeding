@@ -14,7 +14,7 @@ export default function PaymentHistoryScreen({ navigation }) {
   const load = async () => {
     try {
       const res = await paymentsAPI.history();
-      setTransactions(res.data);
+      setTransactions(res.data.transactions);
     } catch (e) {
       console.log('History error:', e.message);
     } finally {

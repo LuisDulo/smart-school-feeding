@@ -9,6 +9,7 @@ from .models import (MealDistributionEvent, MealAccount,
                       User, PaymentTransaction, MenuItem, MealCombo)
 from rest_framework import serializers
 from core.permissions import IsKitchenStaff, IsAdminOrBursar, IsSchoolAdmin
+from core.pagination import paginate_queryset
 
 
 class MenuItemSerializer(serializers.ModelSerializer):
@@ -391,14 +392,17 @@ class ConsumptionHistoryView(APIView):
             return Response({'error': 'Meal account not found.'},
                             status=status.HTTP_404_NOT_FOUND)
 
-        events = MealDistributionEvent.objects.filter(
+        events_qs = MealDistributionEvent.objects.filter(
             meal_account=meal_account
         ).select_related('recorded_by').prefetch_related(
-            'items').order_by('-meal_date', '-created_at')[:90]
+            'items').order_by('-meal_date', '-created_at')
+
+        page, meta = paginate_queryset(request, events_qs, default_limit=90)
 
         return Response({
             'student_name': meal_account.student.full_name,
-            'events': MealDistributionSerializer(events, many=True).data
+            'events': MealDistributionSerializer(page, many=True).data,
+            **meta,
         })
 
 
