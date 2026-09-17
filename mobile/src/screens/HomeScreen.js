@@ -12,6 +12,13 @@ const LOW_BALANCE_THRESHOLD_CENTS = 10000; // KES 100
 // same balance/history/low-balance UI as a student.
 const CAN_VIEW_BALANCE = ['student', 'parent'];
 
+function getGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
 export default function HomeScreen({ navigation }) {
   const { user, logout } = useAuth();
   const [balanceCents, setBalanceCents] = useState(
@@ -72,7 +79,7 @@ export default function HomeScreen({ navigation }) {
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.greetingRow}>
-          <Text style={styles.greeting}>Good morning</Text>
+          <Text style={styles.greeting}>{getGreeting()}</Text>
           <MaterialCommunityIcons name="hand-wave-outline" size={15} color="#A8D8C0" />
         </View>
         <Text style={styles.name}>{user?.full_name}</Text>
