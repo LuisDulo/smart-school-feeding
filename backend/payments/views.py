@@ -211,7 +211,7 @@ class PaymentStatusView(APIView):
     def get(self, request, transaction_id):
         try:
             tx = PaymentTransaction.objects.select_related(
-                'meal_account__student').get(id=transaction_id)
+                'meal_account__student__school').get(id=transaction_id)
         except PaymentTransaction.DoesNotExist:
             return Response({'error': 'Transaction not found.'},
                             status=status.HTTP_404_NOT_FOUND)
@@ -222,6 +222,8 @@ class PaymentStatusView(APIView):
             'amount_ksh': tx.amount_cents / 100,
             'mpesa_reference': tx.mpesa_reference,
             'created_at': tx.created_at,
+            'student_name': tx.meal_account.student.full_name,
+            'school_name': tx.meal_account.student.school.name,
             'new_balance_ksh': tx.meal_account.balance_cents / 100
                 if tx.status == 'confirmed' else None
         })
@@ -432,4 +434,321 @@ class ReviewCreditRequestView(APIView):
         return Response({
             'message': f'Credit request {action}.',
             'request': CreditRequestSerializer(credit_request).data
+        })
+
+
+class MonthlySpendingReportView(APIView):
+    """
+    Monthly spending summary for the logged-in user's meal account
+    (their own if a student, their child's if a parent — see
+    resolve_meal_account).
+    GET /api/payments/monthly-report/
+    GET /api/payments/monthly-report/?months=6&meal_account_id=
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        import calendar
+        from datetime import date
+        from meals.models import MealDistributionEvent
+
+        meal_account_id = request.query_params.get('meal_account_id')
+        try:
+            meal_account = resolve_meal_account(request.user, meal_account_id)
+        except MealAccount.DoesNotExist:
+            return Response({'error': 'Meal account not found.'},
+                            status=status.HTTP_404_NOT_FOUND)
+
+        months_count = max(1, min(int(request.query_params.get('months', 3)), 12))
+        today = date.today()
+        monthly_data = []
+
+        for i in range(months_count - 1, -1, -1):
+            month_date = date(today.year, today.month, 1)
+            for _ in range(i):
+                if month_date.month == 1:
+                    month_date = date(month_date.year - 1, 12, 1)
+                else:
+                    month_date = date(month_date.year, month_date.month - 1, 1)
+
+            last_day = calendar.monthrange(month_date.year, month_date.month)[1]
+            month_end = date(month_date.year, month_date.month, last_day)
+
+            payments = PaymentTransaction.objects.filter(
+                meal_account=meal_account,
+                status='confirmed',
+                created_at__date__gte=month_date,
+                created_at__date__lte=month_end
+            )
+            total_topped_up = sum(p.amount_cents for p in payments) / 100
+            num_transactions = payments.count()
+
+            meals = MealDistributionEvent.objects.filter(
+                meal_account=meal_account,
+                meal_date__gte=month_date,
+                meal_date__lte=month_end
+            )
+            meals_count = meals.count()
+            meals_cost = sum(m.amount_cents for m in meals) / 100
+
+            monthly_data.append({
+                'month': month_date.strftime('%B %Y'),
+                'month_short': month_date.strftime('%b'),
+                'year': month_date.year,
+                'total_topped_up_ksh': total_topped_up,
+                'num_top_ups': num_transactions,
+                'meals_collected': meals_count,
+                'meals_cost_ksh': meals_cost,
+                'avg_cost_per_day': round(meals_cost / last_day, 2),
+            })
+
+        current = monthly_data[-1] if monthly_data else {}
+        previous = monthly_data[-2] if len(monthly_data) >= 2 else {}
+        meals_change = (
+            current.get('meals_collected', 0) - previous.get('meals_collected', 0)
+        ) if previous else 0
+
+        return Response({
+            'student_name': meal_account.student.full_name,
+            'current_balance_ksh': meal_account.balance_cents / 100,
+            'monthly_data': monthly_data,
+            'meals_change_vs_last_month': meals_change,
+            'total_meals_this_month': current.get('meals_collected', 0),
+            'total_spent_this_month_ksh': current.get('meals_cost_ksh', 0),
+            'total_topped_up_this_month_ksh': current.get('total_topped_up_ksh', 0),
+        })
+
+
+class BalanceTrendView(APIView):
+    """
+    Reconstructed daily balance history for the logged-in user's meal
+    account (their own if a student, their child's if a parent — see
+    resolve_meal_account), for a trend chart.
+    GET /api/payments/balance-trend/
+    GET /api/payments/balance-trend/?days=30&meal_account_id=
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from datetime import date, timedelta
+        from meals.models import MealDistributionEvent
+
+        meal_account_id = request.query_params.get('meal_account_id')
+        try:
+            meal_account = resolve_meal_account(request.user, meal_account_id)
+        except MealAccount.DoesNotExist:
+            return Response({'error': 'Meal account not found.'},
+                            status=status.HTTP_404_NOT_FOUND)
+
+        days = max(1, min(int(request.query_params.get('days', 30)), 90))
+        today = date.today()
+        current_balance = meal_account.balance_cents
+
+        all_payments = PaymentTransaction.objects.filter(
+            meal_account=meal_account,
+            status='confirmed',
+            created_at__date__gte=today - timedelta(days=days)
+        ).order_by('created_at')
+
+        all_meals = MealDistributionEvent.objects.filter(
+            meal_account=meal_account,
+            meal_date__gte=today - timedelta(days=days)
+        ).order_by('meal_date')
+
+        # Reconstruct the daily balance by working out each day's net
+        # change (top-ups added, meals deducted), then walking forward
+        # from the balance the account must have had `days` ago.
+        events_by_date = {}
+        for tx in all_payments:
+            d = str(tx.created_at.date())
+            events_by_date.setdefault(d, {'added': 0, 'deducted': 0})
+            events_by_date[d]['added'] += tx.amount_cents
+        for meal in all_meals:
+            d = str(meal.meal_date)
+            events_by_date.setdefault(d, {'added': 0, 'deducted': 0})
+            events_by_date[d]['deducted'] += meal.amount_cents
+
+        total_added = sum(e['added'] for e in events_by_date.values())
+        total_deducted = sum(e['deducted'] for e in events_by_date.values())
+        running = current_balance - total_added + total_deducted
+
+        data_points = []
+        for i in range(days):
+            d = today - timedelta(days=days - 1 - i)
+            d_str = str(d)
+            day_events = events_by_date.get(d_str, {})
+            running += day_events.get('added', 0)
+            running -= day_events.get('deducted', 0)
+            running = max(0, running)
+
+            data_points.append({
+                'date': d_str,
+                'day': d.strftime('%d %b'),
+                'balance_ksh': round(running / 100, 2),
+                'topped_up': day_events.get('added', 0) > 0,
+                'meal_deducted': day_events.get('deducted', 0) > 0,
+            })
+
+        return Response({
+            'student_name': meal_account.student.full_name,
+            'current_balance_ksh': current_balance / 100,
+            'days': days,
+            'data_points': data_points,
+        })
+
+
+class ActivityFeedView(APIView):
+    """
+    Recent activity (top-ups and meals) for the logged-in user's meal
+    account (their own if a student, their child's if a parent — see
+    resolve_meal_account), for the notification bell.
+    GET /api/payments/activity/
+    GET /api/payments/activity/?meal_account_id=
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from meals.models import MealDistributionEvent
+
+        meal_account_id = request.query_params.get('meal_account_id')
+        try:
+            meal_account = resolve_meal_account(request.user, meal_account_id)
+        except MealAccount.DoesNotExist:
+            return Response({'error': 'Meal account not found.'},
+                            status=status.HTTP_404_NOT_FOUND)
+
+        activities = []
+
+        payments = PaymentTransaction.objects.filter(
+            meal_account=meal_account
+        ).order_by('-created_at')[:10]
+        for p in payments:
+            activities.append({
+                'type': 'payment',
+                'icon': 'credit-card',
+                'title': f'KES {p.amount_cents/100:.0f} top-up {p.status}',
+                'subtitle': p.mpesa_reference or 'M-Pesa',
+                'timestamp': p.created_at.isoformat(),
+                'amount_ksh': p.amount_cents / 100,
+                'status': p.status,
+            })
+
+        meals = MealDistributionEvent.objects.filter(
+            meal_account=meal_account
+        ).select_related('recorded_by').order_by('-meal_date', '-created_at')[:10]
+        for m in meals:
+            activities.append({
+                'type': 'meal',
+                'icon': 'coffee',
+                'title': f'Meal collected on {m.meal_date.strftime("%a %d %b")}',
+                'subtitle': (
+                    f'Served by '
+                    f'{m.recorded_by.full_name if m.recorded_by else "kitchen staff"}'
+                    f' · KES {m.amount_cents / 100:.0f} deducted'
+                ),
+                'timestamp': m.created_at.isoformat(),
+                'amount_ksh': -(m.amount_cents / 100),
+                'status': 'confirmed',
+            })
+
+        activities.sort(key=lambda x: x['timestamp'], reverse=True)
+
+        return Response({
+            'student_name': meal_account.student.full_name,
+            'activities': activities[:20],
+            'unread_count': min(len(activities), 5),
+        })
+
+
+class BalanceRiskScoreView(APIView):
+    """
+    The ML balance-depletion risk score for the logged-in user's meal
+    account (their own if a student, their child's if a parent — see
+    resolve_meal_account). Falls back to a simple day-count estimate if
+    the classifier hasn't been trained yet.
+    GET /api/payments/risk-score/
+    GET /api/payments/risk-score/?meal_account_id=
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        import os
+        import joblib
+        import numpy as np
+        from datetime import date, timedelta
+        from django.db.models import Avg
+        from meals.models import MealDistributionEvent
+
+        meal_account_id = request.query_params.get('meal_account_id')
+        try:
+            meal_account = resolve_meal_account(request.user, meal_account_id)
+        except MealAccount.DoesNotExist:
+            return Response({'error': 'Meal account not found.'},
+                            status=status.HTTP_404_NOT_FOUND)
+
+        BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        ML_DIR = os.path.join(BASE_DIR, '..', 'ml', 'models')
+
+        try:
+            clf = joblib.load(os.path.join(ML_DIR, 'balance_risk_classifier.joblib'))
+            scaler = joblib.load(os.path.join(ML_DIR, 'scaler_risk.joblib'))
+        except Exception:
+            balance_ksh = meal_account.balance_cents / 100
+            days_remaining = balance_ksh / 50  # KES 50/day
+            at_risk = days_remaining < 7
+            return Response({
+                'student_name': meal_account.student.full_name,
+                'balance_ksh': balance_ksh,
+                'at_risk': at_risk,
+                'risk_probability': 0.9 if at_risk else 0.1,
+                'estimated_days_remaining': round(days_remaining, 1),
+                'model': 'rule_based_fallback',
+                'message': f'Balance estimated to last ~{round(days_remaining)} days',
+            })
+
+        today = date.today()
+        meal_cost = 5000
+
+        last_4w = today - timedelta(weeks=4)
+        meals_4w = MealDistributionEvent.objects.filter(
+            meal_account=meal_account, meal_date__gte=last_4w).count()
+        avg_meals_pw = meals_4w / 4
+
+        last_week = today - timedelta(weeks=1)
+        meals_lw = MealDistributionEvent.objects.filter(
+            meal_account=meal_account, meal_date__gte=last_week).count()
+
+        last_tx = PaymentTransaction.objects.filter(
+            meal_account=meal_account, status='confirmed'
+        ).order_by('-created_at').first()
+        days_since = (today - last_tx.created_at.date()).days if last_tx else 60
+
+        last_30 = today - timedelta(days=30)
+        topups = PaymentTransaction.objects.filter(
+            meal_account=meal_account, status='confirmed',
+            created_at__date__gte=last_30).count()
+
+        avg_topup = PaymentTransaction.objects.filter(
+            meal_account=meal_account, status='confirmed'
+        ).aggregate(avg=Avg('amount_cents'))['avg'] or 0
+
+        daily_cost = (avg_meals_pw / 5) * meal_cost
+        days_rem = meal_account.balance_cents / daily_cost if daily_cost > 0 else 999
+
+        features = np.array([[
+            meal_account.balance_cents, avg_meals_pw, meals_lw,
+            min(days_since, 90), topups, avg_topup / 100, days_rem,
+        ]])
+        scaled = scaler.transform(features)
+        prediction = int(clf.predict(scaled)[0])
+        probability = float(clf.predict_proba(scaled)[0][1])
+
+        return Response({
+            'student_name': meal_account.student.full_name,
+            'balance_ksh': meal_account.balance_cents / 100,
+            'at_risk': prediction == 1,
+            'risk_probability': round(probability, 3),
+            'estimated_days_remaining': round(days_rem, 1),
+            'model': 'random_forest_classifier',
+            'message': f'Balance estimated to last ~{round(days_rem)} days',
         })

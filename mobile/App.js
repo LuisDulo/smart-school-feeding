@@ -18,6 +18,11 @@ import KitchenServeScreen from './src/screens/KitchenServeScreen';
 import RaiseIssueScreen from './src/screens/RaiseIssueScreen';
 import MealConsumptionScreen from './src/screens/MealConsumptionScreen';
 import ApplyCreditScreen from './src/screens/ApplyCreditScreen';
+import PaymentReceiptScreen from './src/screens/PaymentReceiptScreen';
+import BalanceTrendScreen from './src/screens/BalanceTrendScreen';
+import MonthlyReportScreen from './src/screens/MonthlyReportScreen';
+import ReminderSettingsScreen from './src/screens/ReminderSettingsScreen';
+import QRCodeScreen from './src/screens/QRCodeScreen';
 
 const Stack = createStackNavigator();
 
@@ -48,6 +53,11 @@ function AppNavigator() {
           <Stack.Screen name="MealConsumption" component={MealConsumptionScreen} />
           <Stack.Screen name="RaiseIssue" component={RaiseIssueScreen} />
           <Stack.Screen name="ApplyCredit" component={ApplyCreditScreen} />
+          <Stack.Screen name="PaymentReceipt" component={PaymentReceiptScreen} />
+          <Stack.Screen name="BalanceTrend" component={BalanceTrendScreen} />
+          <Stack.Screen name="MonthlyReport" component={MonthlyReportScreen} />
+          <Stack.Screen name="ReminderSettings" component={ReminderSettingsScreen} />
+          <Stack.Screen name="QRCode" component={QRCodeScreen} />
         </>
       ) : (
         <>
