@@ -26,13 +26,6 @@
         {
           "cameraPermission": "Kitchen staff use the camera to scan a student's QR code at the serving counter."
         }
-      ],
-      [
-        "expo-notifications",
-        {
-          "icon": "./assets/icon.png",
-          "color": "#1A6E3C"
-        }
       ]
     ]
   }

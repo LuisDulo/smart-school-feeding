@@ -4,28 +4,23 @@ import {
   Switch, Alert, ScrollView
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
-
-// weekday: 1-7, 1 = Sunday (expo-notifications' WeeklyTriggerInput convention).
-const REMINDER_DAYS = [
-  { label: 'Monday', value: 2 },
-  { label: 'Tuesday', value: 3 },
-  { label: 'Wednesday', value: 4 },
-  { label: 'Thursday', value: 5 },
-  { label: 'Friday', value: 6 },
+// Plain JS Date.getDay() values (0 = Sunday) — this is an in-app-only
+// reminder (see TopUpReminderBanner), not an OS push/local notification:
+// expo-notifications' Android push-token registration now hard-crashes
+// inside Expo Go on SDK 53+ the moment the module is imported, with no
+// way to opt out short of a custom development build. A banner shown
+// when the app is opened works everywhere without that dependency.
+export const REMINDER_DAYS = [
+  { label: 'Monday', value: 1 },
+  { label: 'Tuesday', value: 2 },
+  { label: 'Wednesday', value: 3 },
+  { label: 'Thursday', value: 4 },
+  { label: 'Friday', value: 5 },
 ];
 
-const REMINDER_TIMES = [
+export const REMINDER_TIMES = [
   { label: '7:00 AM', hour: 7 },
   { label: '8:00 AM', hour: 8 },
   { label: '9:00 AM', hour: 9 },
@@ -34,7 +29,7 @@ const REMINDER_TIMES = [
 
 export default function ReminderSettingsScreen({ navigation }) {
   const [enabled, setEnabled] = useState(false);
-  const [selectedDay, setSelectedDay] = useState(2);
+  const [selectedDay, setSelectedDay] = useState(1);
   const [selectedHour, setSelectedHour] = useState(8);
   const [studentName, setStudentName] = useState('');
   const [saving, setSaving] = useState(false);
@@ -49,7 +44,7 @@ export default function ReminderSettingsScreen({ navigation }) {
       if (settings) {
         const s = JSON.parse(settings);
         setEnabled(s.enabled || false);
-        setSelectedDay(s.day || 2);
+        setSelectedDay(s.day ?? 1);
         setSelectedHour(s.hour || 8);
       }
       const userData = await AsyncStorage.getItem('user_data');
@@ -62,62 +57,24 @@ export default function ReminderSettingsScreen({ navigation }) {
     }
   };
 
-  const requestPermission = async () => {
-    const { status: existing } = await Notifications.getPermissionsAsync();
-    if (existing === 'granted') return true;
-    const { status } = await Notifications.requestPermissionsAsync();
-    return status === 'granted';
-  };
-
-  const scheduleReminder = async () => {
-    const hasPermission = await requestPermission();
-    if (!hasPermission) {
-      Alert.alert(
-        'Permission Required',
-        'Please enable notifications in your phone settings to use reminders.',
-        [{ text: 'OK' }]
-      );
-      return false;
-    }
-
-    await Notifications.cancelAllScheduledNotificationsAsync();
-
-    if (enabled) {
-      await Notifications.scheduleNotificationAsync({
-        content: {
-          title: 'Top Up Reminder',
-          body: `Don't forget to top up ${studentName}'s meal account before the week starts!`,
-          sound: true,
-        },
-        trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
-          weekday: selectedDay,
-          hour: selectedHour,
-          minute: 0,
-        },
-      });
-    }
-
-    await AsyncStorage.setItem(
-      'reminder_settings',
-      JSON.stringify({ enabled, day: selectedDay, hour: selectedHour })
-    );
-    return true;
-  };
-
   const handleSave = async () => {
     setSaving(true);
     try {
-      const ok = await scheduleReminder();
-      if (ok) {
-        Alert.alert(
-          'Saved',
-          enabled
-            ? `Reminder set for ${REMINDER_DAYS.find(d => d.value === selectedDay)?.label} at ${REMINDER_TIMES.find(t => t.hour === selectedHour)?.label}`
-            : 'Reminders disabled.',
-          [{ text: 'OK', onPress: () => navigation.goBack() }]
-        );
-      }
+      await AsyncStorage.setItem(
+        'reminder_settings',
+        JSON.stringify({ enabled, day: selectedDay, hour: selectedHour })
+      );
+      // A saved setting should be able to fire again even if a previous
+      // one already showed today — otherwise changing the day/time here
+      // wouldn't take effect until next week.
+      await AsyncStorage.removeItem('reminder_last_shown');
+      Alert.alert(
+        'Saved',
+        enabled
+          ? `You'll see a reminder in the app every ${REMINDER_DAYS.find(d => d.value === selectedDay)?.label} from ${REMINDER_TIMES.find(t => t.hour === selectedHour)?.label}`
+          : 'Reminders disabled.',
+        [{ text: 'OK', onPress: () => navigation.goBack() }]
+      );
     } catch (e) {
       Alert.alert('Error', 'Could not save reminder.');
     } finally {
@@ -142,7 +99,9 @@ export default function ReminderSettingsScreen({ navigation }) {
         <View style={styles.toggleCard}>
           <View style={{ flex: 1 }}>
             <Text style={styles.toggleTitle}>Weekly Reminder</Text>
-            <Text style={styles.toggleSub}>Get reminded to top up every week</Text>
+            <Text style={styles.toggleSub}>
+              Shown in the app when you open it on the chosen day
+            </Text>
           </View>
           <Switch
             value={enabled}
@@ -171,7 +130,7 @@ export default function ReminderSettingsScreen({ navigation }) {
               ))}
             </View>
 
-            <Text style={styles.sectionTitle}>Reminder Time</Text>
+            <Text style={styles.sectionTitle}>From</Text>
             <View style={styles.optionsGrid}>
               {REMINDER_TIMES.map(t => (
                 <TouchableOpacity
@@ -191,7 +150,9 @@ export default function ReminderSettingsScreen({ navigation }) {
             <View style={styles.previewCard}>
               <Feather name="bell" size={28} color="#3A4AB0" style={{ marginBottom: 8 }} />
               <Text style={styles.previewTitle}>Reminder Preview</Text>
-              <Text style={styles.previewText}>Every {dayName} at {timeName}</Text>
+              <Text style={styles.previewText}>
+                Every {dayName} from {timeName}, next time you open the app
+              </Text>
               <Text style={styles.previewBody}>
                 "Don't forget to top up {studentName}'s meal account!"
               </Text>
@@ -241,7 +202,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', marginBottom: 24,
   },
   previewTitle: { fontSize: 14, fontWeight: '700', color: '#3A4AB0', marginBottom: 4 },
-  previewText: { fontSize: 13, color: '#374151', marginBottom: 8, fontWeight: '600' },
+  previewText: { fontSize: 13, color: '#374151', marginBottom: 8, fontWeight: '600', textAlign: 'center' },
   previewBody: { fontSize: 13, color: '#6B7280', textAlign: 'center', fontStyle: 'italic' },
   saveBtn: { backgroundColor: '#1A6E3C', borderRadius: 12, paddingVertical: 15, alignItems: 'center' },
   saveBtnDisabled: { opacity: 0.6 },
