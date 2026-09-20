@@ -62,13 +62,20 @@ MODELS = {
 # The "recommended" default model is whichever one compare_models.py
 # actually found to have the lowest test-set MAE — not hardcoded, since
 # on a small dataset a simpler model can legitimately beat the ensembles.
+# Matched on compare_models.py's "short" code (LR/RF/XGB), not its
+# "name", since MODELS uses fuller display names ("XGBoost Regressor")
+# that don't string-match compare_models.py's shorter ones ("XGBoost").
 DEFAULT_MODEL_KEY = 'linear_regression'
-_NAME_TO_KEY = {v['name']: k for k, v in MODELS.items()}
+_SHORT_TO_KEY = {'LR': 'linear_regression', 'RF': 'random_forest', 'XGB': 'xgboost'}
 try:
     with open(os.path.join(ML_DIR, 'model_comparison.json')) as f:
-        _best_name = json.load(f).get('best_model')
-    if _best_name in _NAME_TO_KEY and MODELS[_NAME_TO_KEY[_best_name]]['loaded']:
-        DEFAULT_MODEL_KEY = _NAME_TO_KEY[_best_name]
+        _comparison = json.load(f)
+    _best_short = next(
+        m['short'] for m in _comparison['models']
+        if m['name'] == _comparison['best_model'])
+    _best_key = _SHORT_TO_KEY.get(_best_short)
+    if _best_key and MODELS[_best_key]['loaded']:
+        DEFAULT_MODEL_KEY = _best_key
 except Exception:
     pass
 
