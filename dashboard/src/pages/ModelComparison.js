@@ -21,6 +21,8 @@ export default function ModelComparison() {
   const [generating, setGenerating] = useState(false);
   const [selectedModel, setSelectedModel] = useState('xgboost');
   const [genMsg, setGenMsg] = useState('');
+  const [forecasts, setForecasts] = useState([]);
+  const [lastModelUsed, setLastModelUsed] = useState('');
 
   useEffect(() => {
     forecastAPI.models()
@@ -30,6 +32,9 @@ export default function ModelComparison() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
+    forecastAPI.history()
+      .then(r => setForecasts(r.data))
+      .catch(() => {});
   }, []);
 
   const handleGenerate = async () => {
@@ -40,6 +45,14 @@ export default function ModelComparison() {
       setGenMsg(
         `Forecast generated using ${res.data.model_used}. ` +
         `${res.data.forecasts.length} day(s) predicted.`);
+      setLastModelUsed(res.data.model_used);
+      setForecasts(prev => {
+        const newDates = new Set(
+          res.data.forecasts.map(f => f.forecast_date));
+        const filtered = prev.filter(f => !newDates.has(f.forecast_date));
+        return [...filtered, ...res.data.forecasts]
+          .sort((a, b) => new Date(a.forecast_date) - new Date(b.forecast_date));
+      });
     } catch (e) {
       setGenMsg('Generation failed. Ensure the model is trained.');
     } finally {
@@ -284,6 +297,49 @@ export default function ModelComparison() {
             </p>
           )}
         </div>
+
+        <div style={styles.tableCard}>
+          <h3 style={{ ...styles.chartTitle, padding: '20px 24px 0' }}>
+            Forecast Detail{lastModelUsed && ` — ${lastModelUsed}`}
+          </h3>
+          <table style={styles.table}>
+            <thead>
+              <tr style={styles.thead}>
+                {['Forecast Date', 'Predicted Meals',
+                  'Estimated Cost (KES)', 'Generated At'].map(h => (
+                  <th key={h} style={styles.th}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {forecasts.length === 0 ? (
+                <tr>
+                  <td colSpan={4} style={styles.emptyCell}>
+                    No forecasts generated yet. Pick a model above and click Generate.
+                  </td>
+                </tr>
+              ) : forecasts.slice().reverse().map((f, i) => (
+                <tr key={f.id} style={i % 2 === 0 ? {} : { background: '#F9FAFB' }}>
+                  <td style={styles.td}>
+                    {new Date(f.forecast_date).toLocaleDateString(
+                      'en-KE', { weekday: 'short', day: 'numeric',
+                                 month: 'short', year: 'numeric' })}
+                  </td>
+                  <td style={{ ...styles.td, fontWeight: 700, color: '#1A6E3C' }}>
+                    {f.predicted_meals}
+                  </td>
+                  <td style={{ ...styles.td, fontWeight: 700, color: '#1A3A5C' }}>
+                    {f.predicted_cost_ksh?.toLocaleString('en-KE',
+                      { minimumFractionDigits: 2 })}
+                  </td>
+                  <td style={{ ...styles.td, color: '#9CA3AF', fontSize: 11 }}>
+                    {new Date(f.generated_at).toLocaleString('en-KE')}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
@@ -317,6 +373,9 @@ const styles = {
         fontWeight: 700, color: '#fff' },
   td: { padding: '12px 14px', fontSize: 13, color: '#374151',
         borderBottom: '1px solid #F3F4F6' },
+  tableCard: { background: '#fff', borderRadius: 12, overflow: 'hidden',
+               boxShadow: '0 2px 8px rgba(0,0,0,0.04)' },
+  emptyCell: { padding: 40, textAlign: 'center', color: '#9CA3AF', fontSize: 14 },
   improvementsRow: { display: 'flex', gap: 12, marginTop: 16, flexWrap: 'wrap' },
   improvementChip: { background: '#D1FAE5', color: '#1A6E3C',
                      padding: '10px 16px', borderRadius: 8, fontSize: 13 },
@@ -338,7 +397,7 @@ const styles = {
   modelBtn: { border: '1px solid #E5E7EB', borderRadius: 8, padding: '10px 20px',
               fontSize: 13, fontWeight: 600, cursor: 'pointer',
               background: '#fff', color: '#374151' },
-  modelBtnActive: { background: '#1A3A5C', borderColor: '#1A3A5C', color: '#fff' },
+  modelBtnActive: { background: '#1A3A5C', border: '1px solid #1A3A5C', color: '#fff' },
   generateBtn: { background: '#1A6E3C', color: '#fff', border: 'none',
                  borderRadius: 8, padding: '12px 24px', fontSize: 14,
                  fontWeight: 700, cursor: 'pointer', display: 'flex',

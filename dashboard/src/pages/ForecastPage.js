@@ -7,22 +7,34 @@ import { FiBarChart2, FiSettings } from 'react-icons/fi';
 import Topbar from '../components/Topbar';
 import { forecastAPI } from '../services/api';
 
+const MODEL_OPTIONS = [
+  { key: 'linear_regression', label: 'Linear Regression' },
+  { key: 'random_forest', label: 'Random Forest' },
+  { key: 'xgboost', label: 'XGBoost' },
+];
+
 export default function ForecastPage() {
   const [forecasts, setForecasts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [modelInfo, setModelInfo] = useState(null);
+  const [selectedModel, setSelectedModel] = useState('xgboost');
 
   useEffect(() => {
     forecastAPI.history()
       .then(res => setForecasts(res.data))
       .finally(() => setLoading(false));
+    forecastAPI.models()
+      .then(res => {
+        if (res.data?.default_model) setSelectedModel(res.data.default_model);
+      })
+      .catch(() => {});
   }, []);
 
   const handleGenerate = async () => {
     setGenerating(true);
     try {
-      const res = await forecastAPI.generate();
+      const res = await forecastAPI.generate(selectedModel);
       setForecasts(prev => {
         const newDates = new Set(
           res.data.forecasts.map(f => f.forecast_date));
@@ -50,29 +62,48 @@ export default function ForecastPage() {
     <div style={styles.page}>
       <Topbar
         title="Demand Forecast"
-        subtitle="Linear Regression model · scikit-learn"
+        subtitle="Linear Regression · Random Forest · XGBoost — scikit-learn"
       />
       <div style={styles.content}>
         <div style={styles.headerRow}>
-          <div>
-            <p style={styles.modelBadge}>
-              <FiBarChart2 style={styles.badgeIcon} />
-              OLS Linear Regression · 6 features · MAE target &lt; 15 meals/day
+          <p style={styles.modelBadge}>
+            <FiBarChart2 style={styles.badgeIcon} />
+            {MODEL_OPTIONS.find(m => m.key === selectedModel)?.label}
+            {' '}· 6 features · 5-day forecast
+          </p>
+          {modelInfo && (
+            <p style={styles.modelDetail}>
+              Enrolment: {modelInfo.enrolment} ·
+              Rolling avg: {modelInfo.rolling_7day_avg} meals/day
             </p>
-            {modelInfo && (
-              <p style={styles.modelDetail}>
-                Enrolment: {modelInfo.enrolment} ·
-                Rolling avg: {modelInfo.rolling_7day_avg} meals/day
-              </p>
-            )}
+          )}
+        </div>
+
+        <div style={styles.card}>
+          <h3 style={styles.chartTitle}>Select Model</h3>
+          <div style={styles.selectorRow}>
+            {MODEL_OPTIONS.map(({ key, label }) => (
+              <button
+                key={key}
+                style={{
+                  ...styles.modelBtn,
+                  ...(selectedModel === key ? styles.modelBtnActive : {})
+                }}
+                onClick={() => setSelectedModel(key)}
+              >
+                {label}
+              </button>
+            ))}
           </div>
           <button
-            style={styles.generateBtn}
+            style={{ ...styles.generateBtn, ...(generating ? { opacity: 0.6 } : {}) }}
             onClick={handleGenerate}
             disabled={generating}
           >
             <FiSettings style={styles.btnIcon} />
-            {generating ? 'Generating...' : 'Generate 5-Day Forecast'}
+            {generating
+              ? 'Generating...'
+              : `Generate with ${MODEL_OPTIONS.find(m => m.key === selectedModel)?.label}`}
           </button>
         </div>
 
@@ -160,14 +191,20 @@ const styles = {
   page: { flex: 1, display: 'flex', flexDirection: 'column',
           background: '#F7F9FC', overflow: 'auto' },
   content: { padding: 32 },
-  headerRow: { display: 'flex', justifyContent: 'space-between',
-               alignItems: 'center', marginBottom: 24 },
+  headerRow: { marginBottom: 24 },
   modelBadge: { background: '#EEF0FB', color: '#3A4AB0', fontSize: 12,
                 fontWeight: 600, padding: '8px 16px',
                 borderRadius: 8, margin: 0, display: 'inline-flex',
                 alignItems: 'center', gap: 8 },
   badgeIcon: { width: 15, height: 15, flexShrink: 0 },
   modelDetail: { color: '#6B7280', fontSize: 12, margin: '6px 0 0' },
+  card: { background: '#fff', borderRadius: 12, padding: 24, marginBottom: 24,
+          boxShadow: '0 2px 8px rgba(0,0,0,0.04)' },
+  selectorRow: { display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 },
+  modelBtn: { border: '1px solid #E5E7EB', borderRadius: 8, padding: '8px 16px',
+              fontSize: 12, fontWeight: 600, cursor: 'pointer',
+              background: '#fff', color: '#374151' },
+  modelBtnActive: { background: '#1A3A5C', border: '1px solid #1A3A5C', color: '#fff' },
   generateBtn: { background: '#1A6E3C', color: '#fff', border: 'none',
                  borderRadius: 10, padding: '12px 20px',
                  fontSize: 13, fontWeight: 700, cursor: 'pointer',
