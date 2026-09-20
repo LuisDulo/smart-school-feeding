@@ -78,7 +78,8 @@ export default function Sidebar({ active, onNavigate, flagCount = 0 }) {
 
 const styles = {
   sidebar: { width: 220, background: '#1A3A5C', height: '100vh',
-             display: 'flex', flexDirection: 'column', flexShrink: 0 },
+             display: 'flex', flexDirection: 'column', flexShrink: 0,
+             overflowY: 'auto' },
   brand: { padding: '24px 20px 16px', borderBottom: '1px solid #2A4A6C' },
   brandTitle: { color: '#fff', fontWeight: 700, fontSize: 14, margin: 0 },
   brandSub: { color: '#6B9AB8', fontSize: 11, margin: '4px 0 0' },
