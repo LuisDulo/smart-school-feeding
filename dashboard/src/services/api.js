@@ -30,9 +30,11 @@ export const authAPI = {
 };
 
 export const forecastAPI = {
-  generate: () => api.post('/forecast/generate/'),
+  generate: (model) => api.post('/forecast/generate/', model ? { model } : {}),
   history: () => api.get('/forecast/history/'),
   stats: () => api.get('/forecast/stats/'),
+  models: () => api.get('/forecast/models/'),
+  risk: () => api.get('/forecast/risk/'),
 };
 
 export const mealsAPI = {
