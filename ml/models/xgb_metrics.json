@@ -1,0 +1,32 @@
+{
+  "model": "XGBoost Regressor",
+  "algorithm": "Gradient Boosting (Chen & Guestrin, 2016)",
+  "n_estimators_used": 59,
+  "n_estimators_max": 500,
+  "learning_rate": 0.05,
+  "max_depth": 6,
+  "features": [
+    "student_enrolment",
+    "attendance_rate",
+    "term_week",
+    "day_of_week",
+    "is_exam_week",
+    "rolling_7day_avg"
+  ],
+  "train_rows": 106,
+  "test_rows": 27,
+  "mae": 1.6762,
+  "rmse": 1.9776,
+  "r2": 0.6947,
+  "cv_mae_mean": 1.2076,
+  "cv_mae_std": 0.3897,
+  "cv_r2_mean": 0.6301,
+  "feature_importances": {
+    "student_enrolment": 0.0,
+    "attendance_rate": 0.0303,
+    "term_week": 0.1738,
+    "day_of_week": 0.1941,
+    "is_exam_week": 0.5216,
+    "rolling_7day_avg": 0.0802
+  }
+}
