@@ -1,0 +1,29 @@
+{
+  "model": "Random Forest Regressor",
+  "algorithm": "Ensemble \u2014 Bootstrap Aggregating (Bagging)",
+  "n_estimators": 200,
+  "features": [
+    "student_enrolment",
+    "attendance_rate",
+    "term_week",
+    "day_of_week",
+    "is_exam_week",
+    "rolling_7day_avg"
+  ],
+  "train_rows": 106,
+  "test_rows": 27,
+  "mae": 1.6535,
+  "rmse": 1.9388,
+  "r2": 0.7065,
+  "cv_mae_mean": 1.1843,
+  "cv_mae_std": 0.3169,
+  "cv_r2_mean": 0.6409,
+  "feature_importances": {
+    "student_enrolment": 0.0,
+    "attendance_rate": 0.0527,
+    "term_week": 0.2701,
+    "day_of_week": 0.3786,
+    "is_exam_week": 0.1522,
+    "rolling_7day_avg": 0.1463
+  }
+}

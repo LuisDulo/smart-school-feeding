@@ -8,6 +8,8 @@ import StudentBalances from './pages/StudentBalances';
 import ServeMeals from './pages/ServeMeals';
 import MealDistribution from './pages/MealDistribution';
 import ForecastPage from './pages/ForecastPage';
+import ModelComparison from './pages/ModelComparison';
+import BalanceRisk from './pages/BalanceRisk';
 import AnomalyFlags from './pages/AnomalyFlags';
 import Reports from './pages/Reports';
 import MenuManagement from './pages/MenuManagement';
@@ -99,6 +101,8 @@ const PAGES = {
   credit: CreditRequests,
   issues: SupportIssues,
   forecast: ForecastPage,
+  models: ModelComparison,
+  risk: BalanceRisk,
   anomalies: AnomalyFlags,
   reports: Reports,
   platformSupport: PlatformSupport,
