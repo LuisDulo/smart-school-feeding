@@ -39,6 +39,18 @@ export const paymentsAPI = {
   myChildren: () => api.get('/payments/my-children/'),
   applyCredit: (data) => api.post('/payments/credit-requests/', data),
   myCreditRequests: () => api.get('/payments/credit-requests/'),
+  monthlyReport: (months, mealAccountId) => api.get('/payments/monthly-report/', {
+    params: { months: months || 3, meal_account_id: mealAccountId || undefined }
+  }),
+  balanceTrend: (days, mealAccountId) => api.get('/payments/balance-trend/', {
+    params: { days: days || 30, meal_account_id: mealAccountId || undefined }
+  }),
+  activity: (mealAccountId) => api.get('/payments/activity/', {
+    params: { meal_account_id: mealAccountId || undefined }
+  }),
+  riskScore: (mealAccountId) => api.get('/payments/risk-score/', {
+    params: { meal_account_id: mealAccountId || undefined }
+  }),
 };
 
 export const mealsAPI = {
@@ -48,6 +60,9 @@ export const mealsAPI = {
   menuList: () => api.get('/meals/menu/'),
   comboList: () => api.get('/meals/combos/'),
   consumption: (mealAccountId) => api.get(`/meals/consumption/${mealAccountId ? `?meal_account_id=${mealAccountId}` : ''}`),
+  qrData: (mealAccountId) => api.get('/meals/qr/', {
+    params: { meal_account_id: mealAccountId || undefined }
+  }),
 };
 
 export const supportAPI = {
