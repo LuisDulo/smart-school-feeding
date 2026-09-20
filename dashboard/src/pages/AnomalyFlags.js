@@ -264,7 +264,7 @@ const styles = {
   tab: { border: '1px solid #E5E7EB', borderRadius: 8,
          padding: '8px 20px', fontSize: 13, fontWeight: 600,
          cursor: 'pointer', background: '#fff', color: '#374151' },
-  tabActive: { background: '#1A3A5C', borderColor: '#1A3A5C',
+  tabActive: { background: '#1A3A5C', border: '1px solid #1A3A5C',
                color: '#fff' },
   loading: { textAlign: 'center', color: '#9CA3AF', padding: 40 },
   empty: { textAlign: 'center', padding: 60, color: '#6B7280',
