@@ -11,6 +11,7 @@ import ChildSelector from '../components/ChildSelector';
 import WeeklyMealSummary from '../components/WeeklyMealSummary';
 import RiskAlertBanner from '../components/RiskAlertBanner';
 import NotificationBell from '../components/NotificationBell';
+import TopUpReminderBanner from '../components/TopUpReminderBanner';
 
 const LOW_BALANCE_THRESHOLD_CENTS = 10000; // KES 100
 // A parent has no meal_account of their own — the backend resolves
@@ -132,6 +133,8 @@ export default function HomeScreen({ navigation }) {
       {CAN_VIEW_BALANCE.includes(user?.role) && (
         <RiskAlertBanner navigation={navigation} mealAccountId={mealAccountId} />
       )}
+
+      {user?.role === 'parent' && <TopUpReminderBanner navigation={navigation} />}
 
       {CAN_VIEW_BALANCE.includes(user?.role) && (
         <View style={[styles.balanceCard, isLow && styles.balanceCardLow]}>
