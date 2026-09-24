@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   FiHome, FiUsers, FiTrendingUp, FiAlertTriangle,
-  FiClipboard, FiLogOut, FiUserPlus, FiCreditCard, FiHelpCircle
+  FiClipboard, FiLogOut, FiUserPlus, FiCreditCard, FiHelpCircle, FiSend
 } from 'react-icons/fi';
 import { MdOutlineRestaurant, MdOutlineSchool, MdOutlineRoomService, MdOutlineMenuBook } from 'react-icons/md';
 import { useAuth } from '../context/AuthContext';
@@ -26,6 +26,7 @@ const NAV_ITEMS = [
   { key: 'forecast',   label: 'Demand Forecast',   Icon: FiTrendingUp,         roles: ['admin', 'bursar', 'kitchen'] },
   { key: 'anomalies',  label: 'Anomaly Flags',     Icon: FiAlertTriangle,      roles: ['admin', 'bursar'] },
   { key: 'reports',    label: 'Reports',           Icon: FiClipboard,         roles: ['admin', 'bursar'] },
+  { key: 'platformSupport', label: 'Platform Support', Icon: FiSend,          roles: ['admin'] },
 ];
 
 export default function Sidebar({ active, onNavigate, flagCount = 0 }) {

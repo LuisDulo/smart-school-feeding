@@ -21,6 +21,7 @@ class User(models.Model):
         ('kitchen', 'Kitchen Staff'),
         ('bursar', 'Bursar'),
         ('admin', 'School Admin'),
+        ('superadmin', 'Super Admin'),
     ]
     school = models.ForeignKey(School, on_delete=models.CASCADE,
                                related_name='users')
@@ -323,6 +324,51 @@ class SupportIssue(models.Model):
 
     class Meta:
         db_table = 'support_issues'
+        indexes = [models.Index(fields=['status'])]
+
+
+class AdminIssue(models.Model):
+    """A report/issue a school admin raises for the Webmasters Kenya
+    superadmin team to see and resolve — a platform bug, a billing
+    question, a data/reporting problem, a feature request, etc. Mirrors
+    SupportIssue (parent -> school admin) one tier up the chain
+    (school admin -> superadmin)."""
+    CATEGORY_CHOICES = [
+        ('technical', 'Technical / Platform Bug'),
+        ('billing', 'Billing & Payments'),
+        ('feature_request', 'Feature Request'),
+        ('data', 'Data / Reporting Issue'),
+        ('other', 'Other'),
+    ]
+    STATUS_CHOICES = [
+        ('open', 'Open'),
+        ('in_progress', 'In Progress'),
+        ('resolved', 'Resolved'),
+    ]
+    raised_by = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='raised_admin_issues',
+        limit_choices_to={'role': 'admin'}
+    )
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES,
+                                default='other')
+    subject = models.CharField(max_length=200)
+    description = models.TextField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES,
+                              default='open')
+    resolved_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='resolved_admin_issues',
+        limit_choices_to={'role': 'superadmin'}
+    )
+    resolution_notes = models.TextField(blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"{self.subject} — {self.raised_by.full_name} ({self.status})"
+
+    class Meta:
+        db_table = 'admin_issues'
         indexes = [models.Index(fields=['status'])]
 
 

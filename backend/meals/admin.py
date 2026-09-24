@@ -2,7 +2,7 @@ from django.contrib import admin
 from .models import (School, User, MealAccount, PaymentTransaction,
                      MealDistributionEvent, DemandForecast, AnomalyFlag,
                      TermSchedule, MenuItem, MealCombo, CreditRequest,
-                     SupportIssue)
+                     SupportIssue, AdminIssue)
 
 admin.site.register(School)
 admin.site.register(User)
@@ -16,3 +16,4 @@ admin.site.register(MenuItem)
 admin.site.register(MealCombo)
 admin.site.register(CreditRequest)
 admin.site.register(SupportIssue)
+admin.site.register(AdminIssue)

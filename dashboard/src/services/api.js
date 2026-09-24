@@ -73,4 +73,9 @@ export const supportAPI = {
   resolve: (id, data) => api.post(`/support/issues/${id}/resolve/`, data),
 };
 
+export const platformSupportAPI = {
+  raiseIssue: (data) => api.post('/support/admin-issues/', data),
+  myIssues: () => api.get('/support/admin-issues/'),
+};
+
 export default api;
