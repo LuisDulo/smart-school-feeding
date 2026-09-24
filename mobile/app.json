@@ -19,6 +19,14 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Kitchen staff use the camera to scan a student's QR code at the serving counter."
+        }
+      ]
+    ]
   }
 }

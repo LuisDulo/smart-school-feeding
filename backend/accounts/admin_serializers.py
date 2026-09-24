@@ -108,10 +108,17 @@ class StudentListSerializer(serializers.ModelSerializer):
     balance_cents = serializers.IntegerField(
         source='meal_account.balance_cents', default=None, read_only=True)
     guardian_names = serializers.SerializerMethodField()
+    # The raw token, so the dashboard can render/print a QR code for the
+    # student's ID card without a separate round trip. Safe to expose to
+    # this school's own admin — it's only ever redeemable via the
+    # kitchen-only lookup endpoint, and is meaningless outside that.
+    qr_token = serializers.CharField(
+        source='meal_account.qr_token', default=None, read_only=True)
 
     class Meta:
         model = User
-        fields = ['id', 'full_name', 'email', 'balance_cents', 'guardian_names']
+        fields = ['id', 'full_name', 'email', 'balance_cents',
+                  'guardian_names', 'qr_token']
 
     def get_guardian_names(self, obj):
         try:

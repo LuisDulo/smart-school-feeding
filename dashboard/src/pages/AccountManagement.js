@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { FiUserPlus, FiLink } from 'react-icons/fi';
+import { FiUserPlus, FiLink, FiPrinter, FiRefreshCw } from 'react-icons/fi';
+import { MdOutlineQrCode2 } from 'react-icons/md';
+import { QRCodeSVG } from 'qrcode.react';
 import Topbar from '../components/Topbar';
 import { adminAPI } from '../services/api';
 
@@ -49,6 +51,7 @@ export default function AccountManagement() {
           <StudentsTab
             students={students}
             onCreated={() => { loadStudents(); flash('Student account created.'); }}
+            onQRChanged={() => { loadStudents(); flash('New QR code issued — the old card/wristband stops working.'); }}
             setError={setError}
           />
         )}
@@ -73,12 +76,13 @@ export default function AccountManagement() {
   );
 }
 
-function StudentsTab({ students, onCreated, setError }) {
+function StudentsTab({ students, onCreated, onQRChanged, setError }) {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [balance, setBalance] = useState('0');
   const [submitting, setSubmitting] = useState(false);
+  const [qrStudent, setQrStudent] = useState(null);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -129,12 +133,83 @@ function StudentsTab({ students, onCreated, setError }) {
                   <div style={styles.listSub}>Guardians: {s.guardian_names.join(', ')}</div>
                 )}
               </div>
-              <div style={styles.listBalance}>
-                {s.balance_cents != null ? `KES ${(s.balance_cents / 100).toFixed(2)}` : '—'}
+              <div style={styles.listRight}>
+                <div style={styles.listBalance}>
+                  {s.balance_cents != null ? `KES ${(s.balance_cents / 100).toFixed(2)}` : '—'}
+                </div>
+                {s.qr_token && (
+                  <button style={styles.qrBtn} onClick={() => setQrStudent(s)}>
+                    <MdOutlineQrCode2 style={styles.qrBtnIcon} /> QR Card
+                  </button>
+                )}
               </div>
             </div>
           ))}
           {students.length === 0 && <div style={styles.empty}>No students yet.</div>}
+        </div>
+      </div>
+
+      {qrStudent && (
+        <QRCardModal
+          student={qrStudent}
+          onClose={() => setQrStudent(null)}
+          onRegenerated={(updated) => {
+            setQrStudent(updated);
+            onQRChanged();
+          }}
+          setError={setError}
+        />
+      )}
+    </div>
+  );
+}
+
+function QRCardModal({ student, onClose, onRegenerated, setError }) {
+  const [regenerating, setRegenerating] = useState(false);
+
+  const handleRegenerate = async () => {
+    if (!window.confirm(
+      `Issue a new QR code for ${student.full_name}? ` +
+      `Their current card/wristband will stop working immediately.`
+    )) return;
+    setRegenerating(true);
+    setError('');
+    try {
+      const res = await adminAPI.regenerateQR(student.id);
+      onRegenerated({ ...student, qr_token: res.data.qr_token });
+    } catch (e) {
+      setError(e.response?.data?.error || 'Could not regenerate QR code.');
+    } finally {
+      setRegenerating(false);
+    }
+  };
+
+  return (
+    <div style={styles.modalOverlay} onClick={onClose}>
+      <div style={styles.qrModal} onClick={e => e.stopPropagation()}>
+        <style>{`
+          @media print {
+            body * { visibility: hidden; }
+            #qr-print-area, #qr-print-area * { visibility: visible; }
+            #qr-print-area { position: fixed; top: 40px; left: 0; right: 0;
+                             display: flex; justify-content: center; }
+          }
+        `}</style>
+        <div id="qr-print-area" style={styles.qrCard}>
+          <QRCodeSVG value={student.qr_token} size={180} level="M" />
+          <p style={styles.qrCardName}>{student.full_name}</p>
+          <p style={styles.qrCardSub}>Scan at the serving counter</p>
+        </div>
+
+        <div style={styles.modalActions}>
+          <button style={styles.printBtn} onClick={() => window.print()}>
+            <FiPrinter style={styles.btnIcon} /> Print Card
+          </button>
+          <button style={styles.regenBtn} onClick={handleRegenerate} disabled={regenerating}>
+            <FiRefreshCw style={styles.btnIcon} />
+            {regenerating ? 'Issuing...' : 'Lost Card — Issue New Code'}
+          </button>
+          <button style={styles.closeBtn} onClick={onClose}>Close</button>
         </div>
       </div>
     </div>
@@ -299,6 +374,35 @@ const styles = {
              padding: '12px 8px', borderBottom: '1px solid #F3F4F6' },
   listName: { fontSize: 13, fontWeight: 600, color: '#1A3A5C' },
   listSub: { fontSize: 12, color: '#6B7280', marginTop: 2 },
+  listRight: { display: 'flex', flexDirection: 'column',
+               alignItems: 'flex-end', gap: 6 },
   listBalance: { fontSize: 13, fontWeight: 700, color: '#1A3A5C' },
+  qrBtn: { background: '#EEF0FB', color: '#3A4AB0', border: 'none',
+           borderRadius: 6, padding: '4px 10px', fontSize: 11,
+           fontWeight: 700, cursor: 'pointer', display: 'flex',
+           alignItems: 'center', gap: 4 },
+  qrBtnIcon: { width: 13, height: 13 },
   empty: { padding: 20, textAlign: 'center', color: '#9CA3AF', fontSize: 13 },
+  modalOverlay: { position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                  background: 'rgba(0,0,0,0.4)', display: 'flex',
+                  alignItems: 'center', justifyContent: 'center', zIndex: 100 },
+  qrModal: { background: '#fff', borderRadius: 12, padding: 28, width: 320,
+             boxShadow: '0 8px 32px rgba(0,0,0,0.2)', textAlign: 'center' },
+  qrCard: { display: 'flex', flexDirection: 'column', alignItems: 'center',
+            gap: 8, padding: 16 },
+  qrCardName: { margin: 0, fontSize: 16, fontWeight: 700, color: '#1A3A5C' },
+  qrCardSub: { margin: 0, fontSize: 12, color: '#6B7280' },
+  modalActions: { display: 'flex', flexDirection: 'column', gap: 8, marginTop: 16 },
+  printBtn: { background: '#1A6E3C', color: '#fff', border: 'none',
+              borderRadius: 8, padding: '10px 16px', fontSize: 13,
+              fontWeight: 700, cursor: 'pointer', display: 'flex',
+              alignItems: 'center', justifyContent: 'center', gap: 8 },
+  regenBtn: { background: '#FEE2E2', color: '#C0392B', border: 'none',
+              borderRadius: 8, padding: '10px 16px', fontSize: 13,
+              fontWeight: 700, cursor: 'pointer', display: 'flex',
+              alignItems: 'center', justifyContent: 'center', gap: 8 },
+  closeBtn: { background: '#F3F4F6', color: '#374151', border: 'none',
+              borderRadius: 8, padding: '10px 16px', fontSize: 13,
+              fontWeight: 600, cursor: 'pointer' },
+  btnIcon: { width: 14, height: 14 },
 };

@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from django.db import transaction as db_transaction
+from django.core.exceptions import ValidationError
 from .models import (MealDistributionEvent, MealAccount,
                       User, PaymentTransaction, MenuItem, MealCombo)
 from rest_framework import serializers
@@ -403,19 +404,34 @@ class ConsumptionHistoryView(APIView):
 
 class StudentLookupView(APIView):
     """
-    Kitchen staff looks up a student by ID or name.
+    Kitchen staff looks up a student by ID, name, or scanned QR code.
     GET /api/meals/lookup/?q=John
     GET /api/meals/lookup/?id=5
+    GET /api/meals/lookup/?qr=<qr_token printed on the student's card>
     """
     permission_classes = [IsAuthenticated, IsKitchenStaff]
 
     def get(self, request):
         user = request.user
 
+        qr_token = request.query_params.get('qr')
         student_id = request.query_params.get('id')
         query = request.query_params.get('q')
 
-        if student_id:
+        if qr_token:
+            try:
+                meal_account = MealAccount.objects.select_related(
+                    'student').get(
+                        qr_token=qr_token, student__school=user.school)
+            except (MealAccount.DoesNotExist, ValueError, ValidationError):
+                # ValueError/ValidationError: a scanned code that isn't
+                # even a valid UUID (garbage QR, damaged card, wrong kind
+                # of code) — treat the same as "not found" rather than
+                # 500ing on a malformed token.
+                return Response({'error': 'QR code not recognized.'},
+                                status=status.HTTP_404_NOT_FOUND)
+            students = [meal_account.student]
+        elif student_id:
             try:
                 student = User.objects.get(
                     id=student_id, role='student',
@@ -432,7 +448,7 @@ class StudentLookupView(APIView):
             )[:10]
         else:
             return Response(
-                {'error': 'Provide id or q parameter.'},
+                {'error': 'Provide id, q, or qr parameter.'},
                 status=status.HTTP_400_BAD_REQUEST)
 
         results = []
