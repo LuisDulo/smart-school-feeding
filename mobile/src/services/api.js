@@ -1,0 +1,34 @@
+import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// This must be your development machine's local IPv4 address on the same
+// WiFi network as your phone (a physical phone/emulator can't reach
+// "localhost" — that would mean itself, not your laptop).
+// Find it by running: ipconfig (Windows) — look for the WiFi adapter's
+// IPv4 Address. Update this if you switch networks.
+const BASE_URL = 'http://192.168.0.44:8000/api';
+
+const api = axios.create({
+  baseURL: BASE_URL,
+  timeout: 10000,
+  headers: { 'Content-Type': 'application/json' },
+});
+
+// Attach token to every request automatically
+api.interceptors.request.use(async (config) => {
+  const token = await AsyncStorage.getItem('access_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+export const authAPI = {
+  register: (data) => api.post('/auth/register/', data),
+  login: (data) => api.post('/auth/login/', data),
+  profile: () => api.get('/auth/profile/'),
+  logout: () => api.post('/auth/logout/'),
+  getSchools: () => api.get('/auth/schools/'),
+};
+
+export default api;
