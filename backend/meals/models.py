@@ -168,3 +168,26 @@ class AnomalyFlag(models.Model):
             models.Index(fields=['anomaly_score']),
             models.Index(fields=['reviewed']),
         ]
+
+
+class TermSchedule(models.Model):
+    school = models.ForeignKey(
+        School, on_delete=models.CASCADE, related_name='terms')
+    term_name = models.CharField(max_length=100)
+    start_date = models.DateField()
+    end_date = models.DateField()
+    is_current = models.BooleanField(default=False)
+
+    def current_week_number(self):
+        from datetime import date
+        today = date.today()
+        if today < self.start_date or today > self.end_date:
+            return 1
+        delta = (today - self.start_date).days
+        return min((delta // 7) + 1, 13)
+
+    def __str__(self):
+        return f"{self.school.name} — {self.term_name}"
+
+    class Meta:
+        db_table = 'term_schedules'
