@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { FiUsers, FiBarChart2 } from 'react-icons/fi';
+import { MdOutlineRestaurant } from 'react-icons/md';
 import Topbar from '../components/Topbar';
 import { mealsAPI } from '../services/api';
 
@@ -39,13 +41,16 @@ export default function MealDistribution() {
           {log && (
             <div style={styles.summary}>
               <span style={styles.summaryItem}>
-                🍽️ <strong>{log.total_meals_served}</strong> meals served
+                <MdOutlineRestaurant style={styles.summaryIcon} />
+                <strong>{log.total_meals_served}</strong> meals served
               </span>
               <span style={styles.summaryItem}>
-                👥 <strong>{log.enrolment}</strong> enrolled
+                <FiUsers style={styles.summaryIcon} />
+                <strong>{log.enrolment}</strong> enrolled
               </span>
               <span style={styles.summaryItem}>
-                📊 <strong>
+                <FiBarChart2 style={styles.summaryIcon} />
+                <strong>
                   {(log.attendance_rate * 100).toFixed(1)}%
                 </strong> attendance
               </span>
@@ -57,18 +62,18 @@ export default function MealDistribution() {
           <table style={styles.table}>
             <thead>
               <tr style={styles.thead}>
-                {['#', 'Student Name', 'Time Served',
-                  'Balance After (KES)'].map(h => (
+                {['#', 'Student Name', 'Items Collected', 'Amount (KES)',
+                  'Time Served', 'Served By', 'Balance After (KES)'].map(h => (
                   <th key={h} style={styles.th}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={4} style={styles.empty}>Loading...</td></tr>
+                <tr><td colSpan={7} style={styles.empty}>Loading...</td></tr>
               ) : !log || log.events.length === 0 ? (
                 <tr>
-                  <td colSpan={4} style={styles.empty}>
+                  <td colSpan={7} style={styles.empty}>
                     No meals recorded for {selectedDate}
                   </td>
                 </tr>
@@ -80,8 +85,21 @@ export default function MealDistribution() {
                     {event.student_name}
                   </td>
                   <td style={styles.td}>
+                    {event.items && event.items.length > 0
+                      ? event.items.map(it => it.name).join(', ')
+                      : '—'}
+                  </td>
+                  <td style={{ ...styles.td, fontWeight: 600 }}>
+                    {event.amount_ksh?.toLocaleString('en-KE',
+                      { minimumFractionDigits: 2 })}
+                  </td>
+                  <td style={styles.td}>
                     {new Date(event.created_at).toLocaleTimeString(
                       'en-KE', { hour: '2-digit', minute: '2-digit' })}
+                  </td>
+                  <td style={styles.td}>
+                    {event.served_by_name}
+                    <div style={styles.subtle}>{event.served_by_email}</div>
                   </td>
                   <td style={{
                     ...styles.td,
@@ -113,7 +131,9 @@ const styles = {
   summary: { display: 'flex', gap: 20 },
   summaryItem: { fontSize: 13, color: '#374151',
                  background: '#fff', padding: '8px 16px',
-                 borderRadius: 8, border: '1px solid #E5E7EB' },
+                 borderRadius: 8, border: '1px solid #E5E7EB',
+                 display: 'flex', alignItems: 'center', gap: 8 },
+  summaryIcon: { width: 15, height: 15, color: '#6B7280', flexShrink: 0 },
   tableWrap: { background: '#fff', borderRadius: 12, overflow: 'hidden',
                boxShadow: '0 2px 8px rgba(0,0,0,0.04)' },
   table: { width: '100%', borderCollapse: 'collapse' },
@@ -126,4 +146,5 @@ const styles = {
         borderBottom: '1px solid #F3F4F6' },
   empty: { padding: 40, textAlign: 'center',
            color: '#9CA3AF', fontSize: 14 },
+  subtle: { fontSize: 11, color: '#9CA3AF', marginTop: 2 },
 };

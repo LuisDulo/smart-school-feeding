@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, ActivityIndicator,
   TouchableOpacity, Animated
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { paymentsAPI } from '../services/api';
 
 export default function PaymentStatusScreen({ route, navigation }) {
@@ -73,7 +74,7 @@ export default function PaymentStatusScreen({ route, navigation }) {
   if (status === 'confirmed') {
     return (
       <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
-        <Text style={styles.successIcon}>✅</Text>
+        <Feather name="check-circle" size={72} color="#1A6E3C" />
         <Text style={styles.successTitle}>Payment Successful!</Text>
         <Text style={styles.successSub}>
           Your meal balance has been updated
@@ -92,9 +93,12 @@ export default function PaymentStatusScreen({ route, navigation }) {
           ))}
         </View>
 
-        <Text style={styles.smsNote}>
-          📱 SMS confirmation sent by Safaricom
-        </Text>
+        <View style={styles.smsNoteRow}>
+          <Feather name="smartphone" size={12} color="#1A6E3C" />
+          <Text style={styles.smsNote}>
+            SMS confirmation sent by Safaricom
+          </Text>
+        </View>
 
         <TouchableOpacity
           style={styles.homeBtn}
@@ -115,7 +119,7 @@ export default function PaymentStatusScreen({ route, navigation }) {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.failIcon}>❌</Text>
+      <Feather name="x-circle" size={72} color="#C0392B" />
       <Text style={styles.failTitle}>
         {status === 'timeout' ? 'Payment Timed Out' : 'Payment Failed'}
       </Text>
@@ -147,7 +151,6 @@ const styles = StyleSheet.create({
   waitSub: { fontSize: 14, color: '#6B7280', textAlign: 'center',
              marginTop: 8, lineHeight: 20 },
   waitNote: { fontSize: 12, color: '#9CA3AF', marginTop: 16 },
-  successIcon: { fontSize: 72 },
   successTitle: { fontSize: 24, fontWeight: '700', color: '#1A6E3C',
                   marginTop: 16, textAlign: 'center' },
   successSub: { fontSize: 14, color: '#6B7280', textAlign: 'center', marginTop: 8 },
@@ -159,14 +162,14 @@ const styles = StyleSheet.create({
                paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
   detailLabel: { fontSize: 13, color: '#6B7280' },
   detailValue: { fontSize: 13, fontWeight: '700', color: '#1A3A5C' },
-  smsNote: { fontSize: 12, color: '#1A6E3C', marginTop: 16 },
+  smsNoteRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 16 },
+  smsNote: { fontSize: 12, color: '#1A6E3C' },
   homeBtn: { backgroundColor: '#1A6E3C', borderRadius: 10, paddingVertical: 14,
              paddingHorizontal: 48, marginTop: 24 },
   homeBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
   historyBtn: { borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 10,
                 paddingVertical: 14, paddingHorizontal: 48, marginTop: 12 },
   historyBtnText: { color: '#374151', fontSize: 14, fontWeight: '600' },
-  failIcon: { fontSize: 72 },
   failTitle: { fontSize: 22, fontWeight: '700', color: '#C0392B',
                marginTop: 16, textAlign: 'center' },
   failSub: { fontSize: 14, color: '#6B7280', textAlign: 'center',

@@ -1,5 +1,5 @@
 from django.test import TestCase
-from meals.models import School, User, MealAccount, MealDistributionEvent
+from meals.models import School, User, MealAccount, MealDistributionEvent, MenuItem
 from datetime import date
 import bcrypt
 
@@ -23,6 +23,8 @@ class TestMealDistribution(TestCase):
             school=self.school, role='kitchen',
             full_name='Kitchen Staff', email='s4kitchen@test.com',
             hashed_password=make_hashed('Password123!'))
+        self.meal_item = MenuItem.objects.create(
+            school=self.school, name='Standard Meal', price_cents=5000)
 
         login = self.client.post('/api/auth/login/', {
             'email': 's4kitchen@test.com',
@@ -33,7 +35,7 @@ class TestMealDistribution(TestCase):
     def test_record_meal_deducts_balance(self):
         response = self.client.post(
             '/api/meals/serve/',
-            {'student_id': self.student.id},
+            {'student_id': self.student.id, 'item_ids': [self.meal_item.id]},
             content_type='application/json',
             HTTP_AUTHORIZATION=f'Bearer {self.token}'
         )
@@ -44,13 +46,13 @@ class TestMealDistribution(TestCase):
     def test_cannot_serve_meal_twice_same_day(self):
         self.client.post(
             '/api/meals/serve/',
-            {'student_id': self.student.id},
+            {'student_id': self.student.id, 'item_ids': [self.meal_item.id]},
             content_type='application/json',
             HTTP_AUTHORIZATION=f'Bearer {self.token}'
         )
         response = self.client.post(
             '/api/meals/serve/',
-            {'student_id': self.student.id},
+            {'student_id': self.student.id, 'item_ids': [self.meal_item.id]},
             content_type='application/json',
             HTTP_AUTHORIZATION=f'Bearer {self.token}'
         )
@@ -61,7 +63,7 @@ class TestMealDistribution(TestCase):
         self.meal_account.save()
         response = self.client.post(
             '/api/meals/serve/',
-            {'student_id': self.student.id},
+            {'student_id': self.student.id, 'item_ids': [self.meal_item.id]},
             content_type='application/json',
             HTTP_AUTHORIZATION=f'Bearer {self.token}'
         )

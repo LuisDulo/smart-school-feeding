@@ -3,6 +3,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, ReferenceLine
 } from 'recharts';
+import { FiBarChart2, FiSettings } from 'react-icons/fi';
 import Topbar from '../components/Topbar';
 import { forecastAPI } from '../services/api';
 
@@ -55,7 +56,8 @@ export default function ForecastPage() {
         <div style={styles.headerRow}>
           <div>
             <p style={styles.modelBadge}>
-              📊 OLS Linear Regression · 6 features · MAE target &lt; 15 meals/day
+              <FiBarChart2 style={styles.badgeIcon} />
+              OLS Linear Regression · 6 features · MAE target &lt; 15 meals/day
             </p>
             {modelInfo && (
               <p style={styles.modelDetail}>
@@ -69,7 +71,8 @@ export default function ForecastPage() {
             onClick={handleGenerate}
             disabled={generating}
           >
-            {generating ? '⚙️ Generating...' : '⚙️ Generate 5-Day Forecast'}
+            <FiSettings style={styles.btnIcon} />
+            {generating ? 'Generating...' : 'Generate 5-Day Forecast'}
           </button>
         </div>
 
@@ -161,11 +164,15 @@ const styles = {
                alignItems: 'center', marginBottom: 24 },
   modelBadge: { background: '#EEF0FB', color: '#3A4AB0', fontSize: 12,
                 fontWeight: 600, padding: '8px 16px',
-                borderRadius: 8, margin: 0, display: 'inline-block' },
+                borderRadius: 8, margin: 0, display: 'inline-flex',
+                alignItems: 'center', gap: 8 },
+  badgeIcon: { width: 15, height: 15, flexShrink: 0 },
   modelDetail: { color: '#6B7280', fontSize: 12, margin: '6px 0 0' },
   generateBtn: { background: '#1A6E3C', color: '#fff', border: 'none',
                  borderRadius: 10, padding: '12px 20px',
-                 fontSize: 13, fontWeight: 700, cursor: 'pointer' },
+                 fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                 display: 'flex', alignItems: 'center', gap: 8 },
+  btnIcon: { width: 15, height: 15, flexShrink: 0 },
   chartCard: { background: '#fff', borderRadius: 12, padding: 24,
                marginBottom: 24, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' },
   chartTitle: { margin: '0 0 16px', fontSize: 15,

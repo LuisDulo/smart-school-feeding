@@ -3,6 +3,7 @@ import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   Alert, ActivityIndicator, ScrollView
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { paymentsAPI } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
@@ -69,7 +70,8 @@ export default function TopUpScreen({ navigation }) {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <TouchableOpacity onPress={() => navigation.goBack()} style={styles.back}>
-        <Text style={styles.backText}>← Back</Text>
+        <Feather name="arrow-left" size={14} color="#1A6E3C" />
+        <Text style={styles.backText}>Back</Text>
       </TouchableOpacity>
 
       <Text style={styles.title}>Top Up Meal Balance</Text>
@@ -113,7 +115,10 @@ export default function TopUpScreen({ navigation }) {
       />
 
       <View style={styles.infoCard}>
-        <Text style={styles.infoTitle}>ℹ️  How it works</Text>
+        <View style={styles.infoTitleRow}>
+          <Feather name="info" size={13} color="#3A4AB0" />
+          <Text style={styles.infoTitle}>How it works</Text>
+        </View>
         <Text style={styles.infoText}>
           Tap Pay below. You will receive an M-Pesa PIN prompt on your phone.
           Enter your PIN to confirm. Your meal balance updates instantly.
@@ -133,7 +138,10 @@ export default function TopUpScreen({ navigation }) {
         }
       </TouchableOpacity>
 
-      <Text style={styles.secured}>🔒 Secured by Safaricom Daraja API</Text>
+      <View style={styles.securedRow}>
+        <Feather name="lock" size={11} color="#9CA3AF" />
+        <Text style={styles.secured}>Secured by Safaricom Daraja API</Text>
+      </View>
     </ScrollView>
   );
 }
@@ -141,7 +149,7 @@ export default function TopUpScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F7F9FC' },
   content: { padding: 24, paddingBottom: 48 },
-  back: { marginBottom: 16 },
+  back: { marginBottom: 16, flexDirection: 'row', alignItems: 'center', gap: 6 },
   backText: { color: '#1A6E3C', fontSize: 14, fontWeight: '600' },
   title: { fontSize: 24, fontWeight: '700', color: '#1A3A5C', marginBottom: 4 },
   subtitle: { fontSize: 13, color: '#6B7280', marginBottom: 24 },
@@ -159,11 +167,14 @@ const styles = StyleSheet.create({
            color: '#111827', backgroundColor: '#fff' },
   infoCard: { backgroundColor: '#EEF0FB', borderRadius: 10, padding: 16,
               marginTop: 20, borderWidth: 1, borderColor: '#C7CDF0' },
-  infoTitle: { fontSize: 13, fontWeight: '700', color: '#3A4AB0', marginBottom: 6 },
+  infoTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
+  infoTitle: { fontSize: 13, fontWeight: '700', color: '#3A4AB0' },
   infoText: { fontSize: 12, color: '#374151', lineHeight: 18 },
   payBtn: { backgroundColor: '#1A6E3C', borderRadius: 10, paddingVertical: 16,
             alignItems: 'center', marginTop: 24 },
   payBtnDisabled: { opacity: 0.6 },
   payBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
-  secured: { textAlign: 'center', marginTop: 16, fontSize: 11, color: '#9CA3AF' },
+  securedRow: { flexDirection: 'row', justifyContent: 'center',
+                alignItems: 'center', gap: 6, marginTop: 16 },
+  secured: { fontSize: 11, color: '#9CA3AF' },
 });
