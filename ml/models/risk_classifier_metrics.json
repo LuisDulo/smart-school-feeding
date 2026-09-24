@@ -1,0 +1,44 @@
+{
+  "model": "Random Forest Classifier",
+  "task": "Binary Classification \u2014 Balance Depletion Risk",
+  "label_definition": "at_risk=1 if estimated_days_remaining < 7",
+  "features": [
+    "balance_cents",
+    "avg_meals_per_week",
+    "meals_last_week",
+    "days_since_topup",
+    "topups_last_30d",
+    "avg_topup_ksh",
+    "estimated_days_remaining"
+  ],
+  "n_estimators": 200,
+  "class_weight": "balanced",
+  "train_samples": 236,
+  "test_samples": 59,
+  "accuracy": 0.9831,
+  "precision": 0.9091,
+  "recall": 1.0,
+  "f1_score": 0.9524,
+  "auc_roc": 1.0,
+  "cv_f1_mean": 0.9818,
+  "cv_f1_std": 0.0364,
+  "confusion_matrix": [
+    [
+      48,
+      1
+    ],
+    [
+      0,
+      10
+    ]
+  ],
+  "feature_importances": {
+    "balance_cents": 0.0988,
+    "avg_meals_per_week": 0.0606,
+    "meals_last_week": 0.0112,
+    "days_since_topup": 0.0237,
+    "topups_last_30d": 0.027,
+    "avg_topup_ksh": 0.0258,
+    "estimated_days_remaining": 0.7529
+  }
+}

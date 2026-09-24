@@ -144,7 +144,7 @@ const styles = {
                alignItems: 'center', gap: 6 },
   btnIcon: { width: 13, height: 13 },
   filterBtnActive: { background: '#1A6E3C',
-                     borderColor: '#1A6E3C', color: '#fff' },
+                     border: '1px solid #1A6E3C', color: '#fff' },
   tableWrap: { background: '#fff', borderRadius: 12, overflow: 'hidden',
                boxShadow: '0 2px 8px rgba(0,0,0,0.04)' },
   table: { width: '100%', borderCollapse: 'collapse' },
