@@ -1,0 +1,49 @@
+{
+  "models": [
+    {
+      "name": "Linear Regression",
+      "short": "LR",
+      "type": "Parametric",
+      "mae": 1.4411,
+      "rmse": 1.7677,
+      "r2": 0.5737,
+      "mape": 3.49
+    },
+    {
+      "name": "Random Forest",
+      "short": "RF",
+      "type": "Ensemble (Bagging)",
+      "mae": 1.1082,
+      "rmse": 1.331,
+      "r2": 0.7583,
+      "mape": 2.66
+    },
+    {
+      "name": "XGBoost",
+      "short": "XGB",
+      "type": "Ensemble (Boosting)",
+      "mae": 1.052,
+      "rmse": 1.2475,
+      "r2": 0.7877,
+      "mape": 2.53
+    }
+  ],
+  "best_model": "XGBoost",
+  "best_mae": 1.052,
+  "best_r2": 0.7877,
+  "improvements": {
+    "rf_vs_lr_mae_pct": 23.1,
+    "rf_vs_lr_r2_pct": 32.18,
+    "xgb_vs_lr_mae_pct": 27.0,
+    "xgb_vs_lr_r2_pct": 37.3
+  },
+  "test_samples": 400,
+  "features": [
+    "student_enrolment",
+    "attendance_rate",
+    "term_week",
+    "day_of_week",
+    "is_exam_week",
+    "rolling_7day_avg"
+  ]
+}
