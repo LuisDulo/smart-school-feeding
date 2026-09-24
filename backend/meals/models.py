@@ -202,7 +202,16 @@ class MealDistributionEvent(models.Model):
     class Meta:
         db_table = 'meal_distribution_events'
         indexes = [
+            # Serves DailyDistributionLogView — "every event at this
+            # school on this date" (joins through meal_account/student).
             models.Index(fields=['meal_date']),
+            # Serves the single hottest query in the app — RecordMealView's
+            # "has this student already eaten today?" check, run on every
+            # meal-serve attempt at every school. Without this composite
+            # index, Postgres has to intersect the FK index on
+            # meal_account with the plain meal_date index instead of
+            # hitting one index built for exactly this lookup.
+            models.Index(fields=['meal_account', 'meal_date']),
         ]
 
 

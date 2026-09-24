@@ -17,6 +17,7 @@ from .serializers import (InitiatePaymentSerializer,
                            CreateCreditRequestSerializer,
                            ReviewCreditRequestSerializer)
 from core.permissions import IsParentOrStudent, IsAdminOrBursar, IsSchoolAdmin
+from core.pagination import paginate_queryset
 
 logger = logging.getLogger(__name__)
 
@@ -232,6 +233,7 @@ class PaymentHistoryView(APIView):
     (their own if a student, their child's if a parent — see
     resolve_meal_account).
     GET /api/payments/history/
+    GET /api/payments/history/?limit=20&offset=20  — page through older history
     """
     permission_classes = [IsAuthenticated]
 
@@ -243,12 +245,16 @@ class PaymentHistoryView(APIView):
             return Response({'error': 'Meal account not found.'},
                             status=status.HTTP_404_NOT_FOUND)
 
-        transactions = PaymentTransaction.objects.filter(
+        transactions_qs = PaymentTransaction.objects.filter(
             meal_account=meal_account
-        ).order_by('-created_at')[:50]
+        ).order_by('-created_at')
 
-        return Response(PaymentTransactionSerializer(
-            transactions, many=True).data)
+        page, meta = paginate_queryset(request, transactions_qs, default_limit=50)
+
+        return Response({
+            'transactions': PaymentTransactionSerializer(page, many=True).data,
+            **meta,
+        })
 
 
 class MealBalanceView(APIView):
