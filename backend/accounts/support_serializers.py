@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from meals.models import SupportIssue
+from meals.models import SupportIssue, AdminIssue
 
 
 class RaiseIssueSerializer(serializers.Serializer):
@@ -34,6 +34,40 @@ class SupportIssueSerializer(serializers.ModelSerializer):
 
 
 class ResolveIssueSerializer(serializers.Serializer):
+    status = serializers.ChoiceField(choices=['in_progress', 'resolved'])
+    resolution_notes = serializers.CharField(
+        max_length=2000, allow_blank=True, default='')
+
+
+class RaiseAdminIssueSerializer(serializers.Serializer):
+    category = serializers.ChoiceField(
+        choices=['technical', 'billing', 'feature_request', 'data', 'other'],
+        default='other')
+    subject = serializers.CharField(max_length=200)
+    description = serializers.CharField(max_length=5000)
+
+
+class AdminIssueSerializer(serializers.ModelSerializer):
+    raised_by_name = serializers.CharField(
+        source='raised_by.full_name', read_only=True)
+    raised_by_email = serializers.CharField(
+        source='raised_by.email', read_only=True)
+    school_name = serializers.CharField(
+        source='raised_by.school.name', read_only=True)
+    resolved_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = AdminIssue
+        fields = ['id', 'raised_by_name', 'raised_by_email', 'school_name',
+                  'category', 'subject', 'description', 'status',
+                  'resolved_by_name', 'resolution_notes',
+                  'created_at', 'resolved_at']
+
+    def get_resolved_by_name(self, obj):
+        return obj.resolved_by.full_name if obj.resolved_by else None
+
+
+class ResolveAdminIssueSerializer(serializers.Serializer):
     status = serializers.ChoiceField(choices=['in_progress', 'resolved'])
     resolution_notes = serializers.CharField(
         max_length=2000, allow_blank=True, default='')

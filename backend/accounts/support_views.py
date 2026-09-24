@@ -3,11 +3,14 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
-from meals.models import SupportIssue, MealAccount
-from core.permissions import IsAdminOrBursar
+from meals.models import SupportIssue, MealAccount, AdminIssue
+from core.permissions import IsAdminOrBursar, IsSchoolAdmin, IsSuperAdmin
 from .support_serializers import (RaiseIssueSerializer,
                                    SupportIssueSerializer,
-                                   ResolveIssueSerializer)
+                                   ResolveIssueSerializer,
+                                   RaiseAdminIssueSerializer,
+                                   AdminIssueSerializer,
+                                   ResolveAdminIssueSerializer)
 
 
 class RaiseIssueView(APIView):
@@ -131,4 +134,100 @@ class ResolveIssueView(APIView):
         return Response({
             'message': f'Issue marked {issue.status}.',
             'issue': SupportIssueSerializer(issue).data
+        })
+
+
+class RaiseAdminIssueView(APIView):
+    """
+    A school admin raises a report/issue for the Webmasters Kenya
+    superadmin team to see — a platform bug, billing question, data
+    problem, feature request, etc. Mirrors RaiseIssueView one tier up.
+    POST /api/support/admin-issues/
+    GET  /api/support/admin-issues/   — the admin's own reports + status
+    """
+    permission_classes = [IsAuthenticated, IsSchoolAdmin]
+
+    def post(self, request):
+        serializer = RaiseAdminIssueSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        data = serializer.validated_data
+        issue = AdminIssue.objects.create(
+            raised_by=request.user,
+            category=data['category'],
+            subject=data['subject'],
+            description=data['description'],
+        )
+        return Response({
+            'message': 'Report submitted to Webmasters Kenya.',
+            'issue': AdminIssueSerializer(issue).data
+        }, status=status.HTTP_201_CREATED)
+
+    def get(self, request):
+        issues = AdminIssue.objects.filter(
+            raised_by=request.user
+        ).select_related('raised_by__school', 'resolved_by'
+        ).order_by('-created_at')
+        return Response(AdminIssueSerializer(issues, many=True).data)
+
+
+class AdminIssueQueueView(APIView):
+    """
+    Superadmin's queue of school-admin-raised reports, across every
+    school in the network.
+    GET /api/support/admin-issues/queue/
+    GET /api/support/admin-issues/queue/?status=open
+    """
+    permission_classes = [IsAuthenticated, IsSuperAdmin]
+
+    def get(self, request):
+        issues = AdminIssue.objects.select_related(
+            'raised_by__school', 'resolved_by'
+        ).order_by('-created_at')
+
+        status_param = request.query_params.get('status')
+        if status_param in ('open', 'in_progress', 'resolved'):
+            issues = issues.filter(status=status_param)
+
+        return Response({
+            'total': issues.count(),
+            'open': issues.filter(status='open').count(),
+            'issues': AdminIssueSerializer(issues, many=True).data
+        })
+
+
+class ResolveAdminIssueView(APIView):
+    """
+    Superadmin updates a school-admin-raised report's status.
+    POST /api/support/admin-issues/{id}/resolve/
+    Body: { status: 'in_progress'|'resolved', resolution_notes }
+    """
+    permission_classes = [IsAuthenticated, IsSuperAdmin]
+
+    def post(self, request, issue_id):
+        try:
+            issue = AdminIssue.objects.get(id=issue_id)
+        except AdminIssue.DoesNotExist:
+            return Response({'error': 'Report not found.'},
+                            status=status.HTTP_404_NOT_FOUND)
+
+        if issue.status == 'resolved':
+            return Response({'error': 'This report has already been resolved.'},
+                            status=status.HTTP_409_CONFLICT)
+
+        serializer = ResolveAdminIssueSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        issue.status = serializer.validated_data['status']
+        issue.resolution_notes = serializer.validated_data['resolution_notes']
+        issue.resolved_by = request.user
+        if issue.status == 'resolved':
+            issue.resolved_at = timezone.now()
+        issue.save()
+
+        return Response({
+            'message': f'Report marked {issue.status}.',
+            'issue': AdminIssueSerializer(issue).data
         })
