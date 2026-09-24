@@ -200,7 +200,7 @@ class TestPayments(TestCase):
             '/api/payments/history/',
             HTTP_AUTHORIZATION=f'Bearer {self.token}')
         self.assertEqual(res.status_code, 200)
-        self.assertIsInstance(res.json(), list)
+        self.assertIsInstance(res.json()['transactions'], list)
 
     def test_parent_can_view_balance_and_history(self):
         # A parent has no meal_account of their own — balance/history must
@@ -219,7 +219,7 @@ class TestPayments(TestCase):
             '/api/payments/history/',
             HTTP_AUTHORIZATION=f'Bearer {token}')
         self.assertEqual(history_res.status_code, 200)
-        self.assertIsInstance(history_res.json(), list)
+        self.assertIsInstance(history_res.json()['transactions'], list)
 
     def test_minimum_amount_validation(self):
         bursar = create_user(
