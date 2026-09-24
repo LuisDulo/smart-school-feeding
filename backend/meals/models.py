@@ -33,6 +33,20 @@ class User(models.Model):
     def __str__(self):
         return f"{self.full_name} ({self.role})"
 
+    # meals.User is a plain business-logic model, not Django's
+    # AUTH_USER_MODEL — but DRF's IsAuthenticated permission (and our own
+    # role-based permission classes in core/permissions.py) expect
+    # request.user to expose is_authenticated/is_anonymous. Any instance
+    # resolved by MealsJWTAuthentication came from a validated token, so it
+    # is by definition authenticated.
+    @property
+    def is_authenticated(self):
+        return True
+
+    @property
+    def is_anonymous(self):
+        return False
+
     class Meta:
         db_table = 'users'
 
