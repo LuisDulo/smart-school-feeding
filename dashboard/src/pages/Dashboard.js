@@ -3,6 +3,8 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, BarChart, Bar, Legend
 } from 'recharts';
+import { FiDollarSign, FiAlertCircle, FiAlertTriangle, FiSettings } from 'react-icons/fi';
+import { MdOutlineRestaurant } from 'react-icons/md';
 import Topbar from '../components/Topbar';
 import StatCard from '../components/StatCard';
 import { forecastAPI } from '../services/api';
@@ -66,16 +68,16 @@ export default function Dashboard() {
       <div style={styles.content}>
         {/* Stat Cards */}
         <div style={styles.statsRow}>
-          <StatCard icon="🍽️" label="Meals served today"
+          <StatCard icon={MdOutlineRestaurant} label="Meals served today"
             value={stats?.meals_today ?? '—'}
             color="#1A6E3C" loading={loading} />
-          <StatCard icon="💰" label="Collected today (KES)"
+          <StatCard icon={FiDollarSign} label="Collected today (KES)"
             value={stats?.collected_today_ksh?.toLocaleString() ?? '—'}
             color="#3A4AB0" loading={loading} />
-          <StatCard icon="⚠️" label="Low balance students"
+          <StatCard icon={FiAlertCircle} label="Low balance students"
             value={stats?.low_balance_count ?? '—'}
             color="#D07020" loading={loading} />
-          <StatCard icon="🚨" label="Anomaly flags pending"
+          <StatCard icon={FiAlertTriangle} label="Anomaly flags pending"
             value={stats?.pending_anomaly_flags ?? '—'}
             color="#C0392B" loading={loading} />
         </div>
@@ -107,7 +109,8 @@ export default function Dashboard() {
                 onClick={handleGenerateForecast}
                 disabled={generating}
               >
-                {generating ? 'Generating...' : '⚙️ Generate'}
+                <FiSettings style={styles.btnIcon} />
+                {generating ? 'Generating...' : 'Generate'}
               </button>
             </div>
 
@@ -166,7 +169,9 @@ const styles = {
                     alignItems: 'center', marginBottom: 16 },
   generateBtn: { background: '#1A6E3C', color: '#fff', border: 'none',
                  borderRadius: 8, padding: '8px 14px', fontSize: 12,
-                 fontWeight: 600, cursor: 'pointer' },
+                 fontWeight: 600, cursor: 'pointer', display: 'flex',
+                 alignItems: 'center', gap: 6 },
+  btnIcon: { width: 14, height: 14 },
   emptyForecast: { textAlign: 'center', padding: '32px 0',
                    color: '#6B7280', fontSize: 14 },
   forecastRow: { display: 'flex', justifyContent: 'space-between',

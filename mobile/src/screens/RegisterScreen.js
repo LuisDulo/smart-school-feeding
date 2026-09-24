@@ -3,6 +3,7 @@ import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   Alert, ActivityIndicator, ScrollView
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { authAPI } from '../services/api';
 
@@ -46,7 +47,8 @@ export default function RegisterScreen({ navigation }) {
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
       <TouchableOpacity onPress={() => navigation.goBack()} style={styles.back}>
-        <Text style={styles.backText}>← Back</Text>
+        <Feather name="arrow-left" size={14} color="#1A6E3C" />
+        <Text style={styles.backText}>Back</Text>
       </TouchableOpacity>
 
       <Text style={styles.title}>Create Account</Text>
@@ -117,7 +119,7 @@ export default function RegisterScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F7F9FC' },
   content: { padding: 24, paddingBottom: 48 },
-  back: { marginBottom: 16 },
+  back: { marginBottom: 16, flexDirection: 'row', alignItems: 'center', gap: 6 },
   backText: { color: '#1A6E3C', fontSize: 14, fontWeight: '600' },
   title: { fontSize: 24, fontWeight: '700', color: '#1A3A5C', marginBottom: 4 },
   subtitle: { fontSize: 13, color: '#6B7280', marginBottom: 24 },

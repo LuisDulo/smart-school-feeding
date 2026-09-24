@@ -3,6 +3,7 @@ import {
   View, Text, TextInput, TouchableOpacity,
   StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform
 } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 
 export default function LoginScreen({ navigation }) {
@@ -35,7 +36,8 @@ export default function LoginScreen({ navigation }) {
     >
       <View style={styles.inner}>
         <View style={styles.header}>
-          <Text style={styles.emoji}>🏫</Text>
+          <MaterialCommunityIcons name="school-outline" size={48} color="#1A3A5C"
+            style={styles.headerIcon} />
           <Text style={styles.title}>Smart School Feeding</Text>
           <Text style={styles.subtitle}>Management System</Text>
         </View>
@@ -91,7 +93,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F7F9FC' },
   inner: { flex: 1, justifyContent: 'center', paddingHorizontal: 24 },
   header: { alignItems: 'center', marginBottom: 40 },
-  emoji: { fontSize: 48, marginBottom: 8 },
+  headerIcon: { marginBottom: 8 },
   title: { fontSize: 22, fontWeight: '700', color: '#1A3A5C', textAlign: 'center' },
   subtitle: { fontSize: 14, color: '#1A6E3C', fontWeight: '600', marginTop: 2 },
   form: { backgroundColor: '#fff', borderRadius: 16, padding: 24,

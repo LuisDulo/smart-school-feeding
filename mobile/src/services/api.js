@@ -35,7 +35,23 @@ export const paymentsAPI = {
   initiate: (data) => api.post('/payments/initiate/', data),
   status: (transactionId) => api.get(`/payments/status/${transactionId}/`),
   history: () => api.get('/payments/history/'),
-  balance: () => api.get('/payments/balance/'),
+  balance: (mealAccountId) => api.get(`/payments/balance/${mealAccountId ? `?meal_account_id=${mealAccountId}` : ''}`),
+  myChildren: () => api.get('/payments/my-children/'),
+  applyCredit: (data) => api.post('/payments/credit-requests/', data),
+  myCreditRequests: () => api.get('/payments/credit-requests/'),
+};
+
+export const mealsAPI = {
+  lookup: (query) => api.get(`/meals/lookup/?q=${encodeURIComponent(query)}`),
+  serve: (studentId, itemIds) => api.post('/meals/serve/', { student_id: studentId, item_ids: itemIds }),
+  menuList: () => api.get('/meals/menu/'),
+  comboList: () => api.get('/meals/combos/'),
+  consumption: (mealAccountId) => api.get(`/meals/consumption/${mealAccountId ? `?meal_account_id=${mealAccountId}` : ''}`),
+};
+
+export const supportAPI = {
+  raiseIssue: (data) => api.post('/support/issues/', data),
+  myIssues: () => api.get('/support/issues/'),
 };
 
 export default api;

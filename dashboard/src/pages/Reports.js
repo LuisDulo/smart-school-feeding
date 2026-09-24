@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { FiDollarSign, FiAlertTriangle, FiDownload } from 'react-icons/fi';
+import { MdOutlineRestaurant } from 'react-icons/md';
 import Topbar from '../components/Topbar';
 import api from '../services/api';
 
@@ -32,7 +34,7 @@ export default function Reports() {
 
   const reports = [
     {
-      icon: '💰',
+      Icon: FiDollarSign,
       title: 'Payment Collection Report',
       desc: 'All M-Pesa transactions with status and anomaly flag indicator.',
       endpoint: '/reports/payments/csv/?days=90',
@@ -41,7 +43,7 @@ export default function Reports() {
       bg: '#D1FAE5'
     },
     {
-      icon: '🍽️',
+      Icon: MdOutlineRestaurant,
       title: 'Meal Distribution Report',
       desc: 'Daily meal events, student names, and balance after deduction.',
       endpoint: '/reports/meals/csv/?days=90',
@@ -50,7 +52,7 @@ export default function Reports() {
       bg: '#EEF0FB'
     },
     {
-      icon: '🚨',
+      Icon: FiAlertTriangle,
       title: 'Anomaly Detection Report',
       desc: 'All flagged transactions with scores, severity, and review outcomes.',
       endpoint: '/reports/anomalies/csv/',
@@ -115,7 +117,7 @@ export default function Reports() {
                 ...styles.reportIcon,
                 background: r.bg, color: r.color
               }}>
-                {r.icon}
+                <r.Icon size={22} />
               </div>
               <h4 style={styles.reportTitle}>{r.title}</h4>
               <p style={styles.reportDesc}>{r.desc}</p>
@@ -127,7 +129,7 @@ export default function Reports() {
                 onClick={() =>
                   downloadCSV(r.endpoint, r.filename)}
               >
-                ⬇ Download CSV
+                <FiDownload style={styles.downloadIcon} /> Download CSV
               </button>
             </div>
           ))}
@@ -171,5 +173,7 @@ const styles = {
   downloadBtn: { color: '#fff', border: 'none',
                  borderRadius: 8, padding: '10px 20px',
                  fontSize: 13, fontWeight: 600,
-                 cursor: 'pointer', width: '100%' },
+                 cursor: 'pointer', width: '100%', display: 'flex',
+                 alignItems: 'center', justifyContent: 'center', gap: 8 },
+  downloadIcon: { width: 14, height: 14 },
 };
