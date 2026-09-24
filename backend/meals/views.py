@@ -486,3 +486,34 @@ class StudentLookupView(APIView):
                 continue
 
         return Response({'students': results, 'count': len(results)})
+
+
+class StudentQRDataView(APIView):
+    """
+    The data a parent's app displays as a scannable QR code — the same
+    qr_token StudentLookupView's `?qr=` branch expects, so a code
+    generated here is scannable by the kitchen's existing scanner.
+    GET /api/meals/qr/
+    GET /api/meals/qr/?meal_account_id=  — pick a child, if a parent
+        has more than one linked
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from payments.views import resolve_meal_account
+
+        meal_account_id = request.query_params.get('meal_account_id')
+        try:
+            meal_account = resolve_meal_account(request.user, meal_account_id)
+        except MealAccount.DoesNotExist:
+            return Response({'error': 'Meal account not found.'},
+                            status=status.HTTP_404_NOT_FOUND)
+
+        student = meal_account.student
+        return Response({
+            'student_id': student.id,
+            'student_name': student.full_name,
+            'school_name': student.school.name,
+            'balance_ksh': meal_account.balance_cents / 100,
+            'qr_data': str(meal_account.qr_token),
+        })
