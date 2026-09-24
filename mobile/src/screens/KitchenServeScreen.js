@@ -1,9 +1,10 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, FlatList,
   StyleSheet, ActivityIndicator, Alert, Modal
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useAuth } from '../context/AuthContext';
 import { mealsAPI } from '../services/api';
 
@@ -20,6 +21,13 @@ export default function KitchenServeScreen() {
   const [selectedItems, setSelectedItems] = useState([]);
   const [itemSearch, setItemSearch] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  const [showScanner, setShowScanner] = useState(false);
+  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
+  // onBarcodeScanned keeps firing for every frame the code is visible in —
+  // this guards against handling the same scan (and firing the lookup
+  // request) many times over before the modal has a chance to close.
+  const scanHandledRef = useRef(false);
 
   useEffect(() => {
     mealsAPI.menuList().then(res => setMenuItems(res.data)).catch(() => {});
@@ -43,6 +51,43 @@ export default function KitchenServeScreen() {
       setLoading(false);
     }
   }, []);
+
+  const openScanner = async () => {
+    if (!cameraPermission?.granted) {
+      const res = await requestCameraPermission();
+      if (!res.granted) {
+        Alert.alert(
+          'Camera permission needed',
+          'Allow camera access to scan student QR codes, or search by name instead.'
+        );
+        return;
+      }
+    }
+    scanHandledRef.current = false;
+    setShowScanner(true);
+  };
+
+  const handleBarcodeScanned = async ({ data }) => {
+    if (scanHandledRef.current) return;
+    scanHandledRef.current = true;
+    setShowScanner(false);
+    setQuery('');
+    setLoading(true);
+    try {
+      const res = await mealsAPI.lookupByQR(data);
+      setStudents(res.data.students);
+      setSearched(true);
+    } catch (e) {
+      Alert.alert(
+        'QR code not recognized',
+        e.response?.data?.error || 'Try scanning again, or search by name.'
+      );
+      setStudents([]);
+      setSearched(true);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const openServeModal = (student) => {
     setServingStudent(student);
@@ -151,14 +196,20 @@ export default function KitchenServeScreen() {
       </View>
 
       <View style={styles.searchWrap}>
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Search student by name..."
-          placeholderTextColor="#9CA3AF"
-          value={query}
-          onChangeText={(v) => { setQuery(v); runSearch(v); }}
-          autoCapitalize="words"
-        />
+        <View style={styles.searchRow}>
+          <TextInput
+            style={styles.searchInput}
+            placeholder="Search student by name..."
+            placeholderTextColor="#9CA3AF"
+            value={query}
+            onChangeText={(v) => { setQuery(v); runSearch(v); }}
+            autoCapitalize="words"
+          />
+          <TouchableOpacity style={styles.scanBtn} onPress={openScanner}>
+            <Feather name="camera" size={18} color="#fff" />
+          </TouchableOpacity>
+        </View>
+        <Text style={styles.scanHint}>Lost QR card? Search by name instead.</Text>
       </View>
 
       {loading ? (
@@ -273,6 +324,33 @@ export default function KitchenServeScreen() {
           </View>
         </View>
       </Modal>
+
+      <Modal
+        visible={showScanner}
+        animationType="slide"
+        onRequestClose={() => setShowScanner(false)}
+      >
+        <View style={styles.scannerContainer}>
+          <CameraView
+            style={StyleSheet.absoluteFillObject}
+            facing="back"
+            barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
+            onBarcodeScanned={handleBarcodeScanned}
+          />
+          <View style={styles.scannerOverlay}>
+            <View style={styles.scannerHeader}>
+              <Text style={styles.scannerTitle}>Scan Student QR Code</Text>
+              <TouchableOpacity onPress={() => setShowScanner(false)} style={styles.scannerCloseBtn}>
+                <Feather name="x" size={22} color="#fff" />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.scanBox} />
+            <Text style={styles.scannerHint}>
+              Point the camera at the student's ID card or wristband
+            </Text>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -286,9 +364,13 @@ const styles = StyleSheet.create({
   name: { color: '#fff', fontSize: 18, fontWeight: '700', marginTop: 2 },
   logout: { color: '#F87171', fontSize: 13, marginTop: 4 },
   searchWrap: { padding: 16 },
-  searchInput: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#E5E7EB',
+  searchRow: { flexDirection: 'row', gap: 10, alignItems: 'center' },
+  searchInput: { flex: 1, backgroundColor: '#fff', borderWidth: 1, borderColor: '#E5E7EB',
                  borderRadius: 10, paddingHorizontal: 16, paddingVertical: 12,
                  fontSize: 15, color: '#111827' },
+  scanBtn: { backgroundColor: '#1A3A5C', borderRadius: 10,
+             width: 46, height: 46, alignItems: 'center', justifyContent: 'center' },
+  scanHint: { fontSize: 11, color: '#9CA3AF', marginTop: 8 },
   list: { paddingHorizontal: 16, paddingBottom: 24 },
   card: { backgroundColor: '#fff', borderRadius: 12, padding: 16,
           marginBottom: 10, flexDirection: 'row', justifyContent: 'space-between',
@@ -338,4 +420,15 @@ const styles = StyleSheet.create({
   confirmBtn: { flex: 1, backgroundColor: '#1A6E3C', borderRadius: 10,
                 paddingVertical: 14, alignItems: 'center' },
   confirmBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  scannerContainer: { flex: 1, backgroundColor: '#000' },
+  scannerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.15)',
+                    justifyContent: 'space-between' },
+  scannerHeader: { flexDirection: 'row', justifyContent: 'space-between',
+                   alignItems: 'center', paddingTop: 56, paddingHorizontal: 20 },
+  scannerTitle: { color: '#fff', fontSize: 16, fontWeight: '700' },
+  scannerCloseBtn: { padding: 6 },
+  scanBox: { alignSelf: 'center', width: 220, height: 220, borderRadius: 16,
+             borderWidth: 3, borderColor: '#1A6E3C', backgroundColor: 'transparent' },
+  scannerHint: { color: '#fff', fontSize: 13, textAlign: 'center',
+                 paddingBottom: 48, paddingHorizontal: 32 },
 });

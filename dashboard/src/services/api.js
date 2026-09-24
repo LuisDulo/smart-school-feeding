@@ -37,7 +37,8 @@ export const forecastAPI = {
 
 export const mealsAPI = {
   log: (dateStr) => api.get(`/meals/log/${dateStr ? `?date=${dateStr}` : ''}`),
-  lookup: (query) => api.get(`/meals/lookup/?q=${query}`),
+  lookup: (query) => api.get(`/meals/lookup/?q=${encodeURIComponent(query)}`),
+  lookupByQR: (qrToken) => api.get(`/meals/lookup/?qr=${encodeURIComponent(qrToken)}`),
   serve: (studentId, itemIds) => api.post('/meals/serve/', { student_id: studentId, item_ids: itemIds }),
   consumption: (mealAccountId) => api.get(`/meals/consumption/${mealAccountId ? `?meal_account_id=${mealAccountId}` : ''}`),
   menuList: () => api.get('/meals/menu/'),
@@ -66,6 +67,7 @@ export const adminAPI = {
   createParent: (data) => api.post('/auth/admin/parents/', data),
   linkGuardian: (data) => api.post('/auth/admin/link/', data),
   unlinkGuardian: (data) => api.delete('/auth/admin/link/', { data }),
+  regenerateQR: (studentId) => api.post(`/auth/admin/students/${studentId}/regenerate-qr/`),
 };
 
 export const supportAPI = {
