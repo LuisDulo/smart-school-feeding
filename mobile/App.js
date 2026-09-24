@@ -1,3 +1,7 @@
+// Must be the very first import — registers the native gesture-handler
+// module before anything else touches it (react-native-gesture-handler's
+// own setup requirement; @react-navigation/stack depends on it).
+import 'react-native-gesture-handler';
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -9,6 +13,7 @@ import HomeScreen from './src/screens/HomeScreen';
 import TopUpScreen from './src/screens/TopUpScreen';
 import PaymentStatusScreen from './src/screens/PaymentStatusScreen';
 import PaymentHistoryScreen from './src/screens/PaymentHistoryScreen';
+import LowBalanceAlertScreen from './src/screens/LowBalanceAlertScreen';
 
 const Stack = createStackNavigator();
 
@@ -31,6 +36,7 @@ function AppNavigator() {
           <Stack.Screen name="TopUp" component={TopUpScreen} />
           <Stack.Screen name="PaymentStatus" component={PaymentStatusScreen} />
           <Stack.Screen name="PaymentHistory" component={PaymentHistoryScreen} />
+          <Stack.Screen name="LowBalanceAlert" component={LowBalanceAlertScreen} />
         </>
       ) : (
         <>
