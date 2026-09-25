@@ -4,40 +4,40 @@
       "name": "Linear Regression",
       "short": "LR",
       "type": "Parametric",
-      "mae": 1.4411,
-      "rmse": 1.7677,
-      "r2": 0.5737,
-      "mape": 3.49
+      "mae": 1.452,
+      "rmse": 1.8021,
+      "r2": 0.585,
+      "mape": 3.5
     },
     {
       "name": "Random Forest",
       "short": "RF",
       "type": "Ensemble (Bagging)",
-      "mae": 1.1082,
-      "rmse": 1.331,
-      "r2": 0.7583,
-      "mape": 2.66
+      "mae": 1.0965,
+      "rmse": 1.305,
+      "r2": 0.7824,
+      "mape": 2.63
     },
     {
       "name": "XGBoost",
       "short": "XGB",
       "type": "Ensemble (Boosting)",
-      "mae": 1.052,
-      "rmse": 1.2475,
-      "r2": 0.7877,
-      "mape": 2.53
+      "mae": 1.0285,
+      "rmse": 1.2237,
+      "r2": 0.8087,
+      "mape": 2.47
     }
   ],
   "best_model": "XGBoost",
-  "best_mae": 1.052,
-  "best_r2": 0.7877,
+  "best_mae": 1.0285,
+  "best_r2": 0.8087,
   "improvements": {
-    "rf_vs_lr_mae_pct": 23.1,
-    "rf_vs_lr_r2_pct": 32.18,
-    "xgb_vs_lr_mae_pct": 27.0,
-    "xgb_vs_lr_r2_pct": 37.3
+    "rf_vs_lr_mae_pct": 24.48,
+    "rf_vs_lr_r2_pct": 33.74,
+    "xgb_vs_lr_mae_pct": 29.17,
+    "xgb_vs_lr_r2_pct": 38.24
   },
-  "test_samples": 400,
+  "test_samples": 3000,
   "features": [
     "student_enrolment",
     "attendance_rate",
