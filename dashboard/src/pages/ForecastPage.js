@@ -6,6 +6,7 @@ import {
 import { FiBarChart2, FiSettings } from 'react-icons/fi';
 import Topbar from '../components/Topbar';
 import { forecastAPI } from '../services/api';
+import { latestForecastBatch } from '../utils/forecastUtils';
 
 const MODEL_OPTIONS = [
   { key: 'linear_regression', label: 'Linear Regression' },
@@ -16,7 +17,6 @@ const MODEL_OPTIONS = [
 const HORIZON_OPTIONS = [
   { key: 'five_day', label: '5-Day' },
   { key: 'month', label: 'Month' },
-  { key: 'term', label: 'Rest of Term' },
 ];
 
 export default function ForecastPage() {
@@ -28,8 +28,13 @@ export default function ForecastPage() {
   const [selectedHorizon, setSelectedHorizon] = useState('five_day');
 
   useEffect(() => {
+    // /forecast/history/ returns every forecast ever generated for this
+    // school — every test run, model, and horizon, going back to the
+    // start of the project. Only show the most recent single Generate
+    // batch by default, or the chart/table reads as a nonsensical mix
+    // of unrelated runs made days or months apart.
     forecastAPI.history()
-      .then(res => setForecasts(res.data))
+      .then(res => setForecasts(latestForecastBatch(res.data)))
       .finally(() => setLoading(false));
     forecastAPI.models()
       .then(res => {
@@ -60,19 +65,17 @@ export default function ForecastPage() {
   };
 
   // `forecasts` is always exactly the last-generated batch (see
-  // handleGenerate), so the whole thing is shown — a 5-day forecast
-  // shows 5 points, a term forecast shows all of them. With many points
-  // (month/term), the axis thins its own labels via xAxisInterval below
-  // rather than a fixed slice silently dropping the earliest days.
+  // handleGenerate) or the most recent one loaded on mount (see
+  // latestForecastBatch), so the whole thing is shown — a 5-day forecast
+  // shows 5 points, a month forecast shows up to 23. The axis thins its
+  // own labels via xAxisInterval below so a month's worth of dates
+  // doesn't render as one unreadable smear of overlapping text.
   const chartData = forecasts.map(f => ({
     date: new Date(f.forecast_date).toLocaleDateString(
       'en-KE', { day: 'numeric', month: 'short' }),
     meals: f.predicted_meals,
     cost: f.predicted_cost_ksh,
   }));
-  // Aim for roughly 8 evenly-spaced x-axis labels no matter how many
-  // points there are, so a term forecast's ~65 dates don't render as
-  // one unreadable smear of overlapping text.
   const xAxisInterval = Math.max(0, Math.ceil(chartData.length / 8) - 1);
 
   return (
