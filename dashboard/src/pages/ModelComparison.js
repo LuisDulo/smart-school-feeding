@@ -15,11 +15,18 @@ const MODEL_OPTIONS = [
   { key: 'xgboost', label: 'XGBoost' },
 ];
 
+const HORIZON_OPTIONS = [
+  { key: 'five_day', label: '5-Day' },
+  { key: 'month', label: 'Month' },
+  { key: 'term', label: 'Rest of Term' },
+];
+
 export default function ModelComparison() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [selectedModel, setSelectedModel] = useState('xgboost');
+  const [selectedHorizon, setSelectedHorizon] = useState('five_day');
   const [genMsg, setGenMsg] = useState('');
   const [forecasts, setForecasts] = useState([]);
   const [lastModelUsed, setLastModelUsed] = useState('');
@@ -41,7 +48,7 @@ export default function ModelComparison() {
     setGenerating(true);
     setGenMsg('');
     try {
-      const res = await forecastAPI.generate(selectedModel);
+      const res = await forecastAPI.generate(selectedModel, selectedHorizon);
       setGenMsg(
         `Forecast generated using ${res.data.model_used}. ` +
         `${res.data.forecasts.length} day(s) predicted.`);
@@ -54,7 +61,7 @@ export default function ModelComparison() {
           .sort((a, b) => new Date(a.forecast_date) - new Date(b.forecast_date));
       });
     } catch (e) {
-      setGenMsg('Generation failed. Ensure the model is trained.');
+      setGenMsg(e.response?.data?.error || 'Generation failed. Ensure the model is trained.');
     } finally {
       setGenerating(false);
     }
@@ -261,7 +268,7 @@ export default function ModelComparison() {
         <div style={styles.card}>
           <h3 style={styles.cardTitle}>Generate Forecast — Select Model</h3>
           <p style={styles.cardNote}>
-            Choose which model produces the 5-day demand forecast.
+            Choose which model produces the demand forecast.
             {winner && ` ${winner} currently has the lowest MAE.`}
           </p>
           <div style={styles.selectorRow}>
@@ -278,6 +285,23 @@ export default function ModelComparison() {
               </button>
             ))}
           </div>
+
+          <p style={styles.cardNote}>Choose the forecast range.</p>
+          <div style={styles.selectorRow}>
+            {HORIZON_OPTIONS.map(({ key, label }) => (
+              <button
+                key={key}
+                style={{
+                  ...styles.modelBtn,
+                  ...(selectedHorizon === key ? styles.modelBtnActive : {})
+                }}
+                onClick={() => setSelectedHorizon(key)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
           <button
             style={{ ...styles.generateBtn, ...(generating ? { opacity: 0.6 } : {}) }}
             onClick={handleGenerate}
@@ -286,7 +310,7 @@ export default function ModelComparison() {
             <FiSettings style={styles.btnIcon} />
             {generating
               ? 'Generating...'
-              : `Generate with ${selectedModel.replace(/_/g, ' ')}`}
+              : `Generate ${HORIZON_OPTIONS.find(h => h.key === selectedHorizon)?.label} · ${selectedModel.replace(/_/g, ' ')}`}
           </button>
           {genMsg && (
             <p style={{

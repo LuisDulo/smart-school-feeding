@@ -103,12 +103,40 @@ def get_rolling_avg(school, days=7):
     return sum(daily_counts) / len(daily_counts) if daily_counts else 40
 
 
+# How far ahead each horizon looks, and a safety cap on the number of
+# weekday forecasts it can ever produce in one call (protects against a
+# misconfigured TermSchedule.end_date years in the future turning "term"
+# into an unbounded loop of DB writes).
+HORIZONS = {
+    'five_day': {'lookahead_days': 7, 'max_forecasts': 5},
+    'month': {'lookahead_days': 30, 'max_forecasts': 23},
+    'term': {'lookahead_days': None, 'max_forecasts': 130},
+}
+
+
+def week_number_for(term, target_date):
+    """
+    Which week of `term` `target_date` falls in (1-13) — unlike
+    TermSchedule.current_week_number(), this takes an explicit date
+    instead of always using today, so a forecast for next month or the
+    rest of the term actually advances the week/exam-week features
+    instead of freezing them at today's week for every future date.
+    """
+    if target_date < term.start_date or target_date > term.end_date:
+        return 1
+    delta = (target_date - term.start_date).days
+    return min((delta // 7) + 1, 13)
+
+
 class GenerateForecastView(APIView):
     """
-    Generate 5-day demand forecast.
+    Generate a demand forecast.
     POST /api/forecast/generate/
-    Body: { "model": "linear_regression" | "random_forest" | "xgboost" }
+    Body: { "model": "linear_regression" | "random_forest" | "xgboost",
+            "horizon": "five_day" | "month" | "term" }
     Omitting "model" uses whichever model compare_models.py found best.
+    Omitting "horizon" defaults to "five_day".
+    "term" forecasts every remaining school weekday in the current term.
     """
     permission_classes = [IsAuthenticated]
 
@@ -117,6 +145,12 @@ class GenerateForecastView(APIView):
         if model_key not in MODELS:
             return Response(
                 {'error': f'Unknown model. Choose from: {list(MODELS.keys())}'},
+                status=status.HTTP_400_BAD_REQUEST)
+
+        horizon = request.data.get('horizon', 'five_day')
+        if horizon not in HORIZONS:
+            return Response(
+                {'error': f'Unknown horizon. Choose from: {list(HORIZONS.keys())}'},
                 status=status.HTTP_400_BAD_REQUEST)
 
         model_info = MODELS[model_key]
@@ -141,22 +175,34 @@ class GenerateForecastView(APIView):
                 {'error': 'No current term schedule found.'},
                 status=status.HTTP_404_NOT_FOUND)
 
+        today = date.today()
+        horizon_config = HORIZONS[horizon]
+        max_forecasts = horizon_config['max_forecasts']
+
+        if horizon == 'term':
+            if term.end_date <= today:
+                return Response(
+                    {'error': 'The current term has already ended.'},
+                    status=status.HTTP_400_BAD_REQUEST)
+            lookahead_days = (term.end_date - today).days
+        else:
+            lookahead_days = horizon_config['lookahead_days']
+
         rolling_avg = get_rolling_avg(school)
         forecasts = []
-        today = date.today()
         model = model_info['model']
         scaler = model_info['scaler']
 
-        for i in range(1, 8):
+        for i in range(1, lookahead_days + 1):
             forecast_date = today + timedelta(days=i)
 
             # Skip weekends
             if forecast_date.weekday() >= 5:
                 continue
-            if len(forecasts) >= 5:
+            if len(forecasts) >= max_forecasts:
                 break
 
-            week_num = term.current_week_number()
+            week_num = week_number_for(term, forecast_date)
             exam = 1 if week_num in [12, 13] else 0
 
             # Attendance rate varies by day of week
@@ -196,6 +242,7 @@ class GenerateForecastView(APIView):
             'model_used': model_info['name'],
             'model_type': model_info['type'],
             'model_key': model_key,
+            'horizon': horizon,
             'generated_for': str(today),
             'forecasts': DemandForecastSerializer(forecasts, many=True).data,
             'model_info': {
