@@ -8,6 +8,7 @@ import {
 } from 'react-icons/fi';
 import Topbar from '../components/Topbar';
 import { forecastAPI } from '../services/api';
+import { latestForecastBatch } from '../utils/forecastUtils';
 
 const MODEL_OPTIONS = [
   { key: 'linear_regression', label: 'Linear Regression' },
@@ -18,7 +19,6 @@ const MODEL_OPTIONS = [
 const HORIZON_OPTIONS = [
   { key: 'five_day', label: '5-Day' },
   { key: 'month', label: 'Month' },
-  { key: 'term', label: 'Rest of Term' },
 ];
 
 export default function ModelComparison() {
@@ -39,8 +39,11 @@ export default function ModelComparison() {
       })
       .catch(console.error)
       .finally(() => setLoading(false));
+    // /forecast/history/ returns every forecast ever generated for this
+    // school — only show the most recent single Generate batch by
+    // default, or the table reads as a mix of unrelated runs.
     forecastAPI.history()
-      .then(r => setForecasts(r.data))
+      .then(r => setForecasts(latestForecastBatch(r.data)))
       .catch(() => {});
   }, []);
 
