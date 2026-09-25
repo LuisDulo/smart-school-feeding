@@ -8,11 +8,11 @@ import { MdOutlineRestaurant } from 'react-icons/md';
 import Topbar from '../components/Topbar';
 import StatCard from '../components/StatCard';
 import { forecastAPI } from '../services/api';
+import { latestForecastBatch } from '../utils/forecastUtils';
 
 const HORIZON_OPTIONS = [
   { key: 'five_day', label: '5-Day' },
   { key: 'month', label: 'Month' },
-  { key: 'term', label: 'Rest of Term' },
 ];
 
 export default function Dashboard() {
@@ -40,8 +40,11 @@ export default function Dashboard() {
 
   const loadForecasts = async () => {
     try {
+      // /forecast/history/ returns every forecast ever generated for
+      // this school — only show the most recent single Generate batch,
+      // or this widget mixes forecasts from unrelated runs.
       const res = await forecastAPI.history();
-      setForecasts(res.data);
+      setForecasts(latestForecastBatch(res.data));
     } catch (e) {
       console.error('Forecast history error:', e.message);
     }
