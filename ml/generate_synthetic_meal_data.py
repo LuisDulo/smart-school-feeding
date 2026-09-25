@@ -1,5 +1,5 @@
 """
-Expand the demand-forecasting training set from ~133 rows to ~2000 rows.
+Expand the demand-forecasting training set from ~133 rows to ~15000 rows.
 
 The original ml/data/meal_distribution.csv was exported from the live
 demo school's actual MealDistributionEvent history (see
@@ -16,7 +16,7 @@ Instead this script reproduces the SAME attendance-generation
 methodology (day-of-week dips, exam-week dips, week-1 settling-in dip,
 random daily noise, holiday-free weekday-only school calendar, a
 13-week term cycle) standalone, with no Django/DB dependency, and
-extends it across many synthetic terms to reach ~2000 rows. Feature
+extends it across many synthetic terms to reach ~15000 rows. Feature
 engineering (lagged rolling_7day_avg, lagged attendance_rate) mirrors
 generate_data.py's CSV export exactly, so the two datasets are
 methodologically consistent -- this one is just longer.
@@ -37,7 +37,7 @@ if hasattr(sys.stdout, 'reconfigure'):
 
 random.seed(42)
 
-TARGET_ROWS = 2000
+TARGET_ROWS = 15000
 ENROLMENT = 50
 WEEKS_PER_TERM = 13
 

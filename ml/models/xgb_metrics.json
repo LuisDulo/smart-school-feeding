@@ -1,7 +1,7 @@
 {
   "model": "XGBoost Regressor",
   "algorithm": "Gradient Boosting (Chen & Guestrin, 2016)",
-  "n_estimators_used": 66,
+  "n_estimators_used": 94,
   "n_estimators_max": 500,
   "learning_rate": 0.05,
   "max_depth": 6,
@@ -13,20 +13,20 @@
     "is_exam_week",
     "rolling_7day_avg"
   ],
-  "train_rows": 1600,
-  "test_rows": 400,
-  "mae": 1.052,
-  "rmse": 1.2475,
-  "r2": 0.7877,
-  "cv_mae_mean": 1.0513,
-  "cv_mae_std": 0.0204,
-  "cv_r2_mean": 0.7927,
+  "train_rows": 12000,
+  "test_rows": 3000,
+  "mae": 1.0285,
+  "rmse": 1.2237,
+  "r2": 0.8087,
+  "cv_mae_mean": 1.0203,
+  "cv_mae_std": 0.0104,
+  "cv_r2_mean": 0.8137,
   "feature_importances": {
     "student_enrolment": 0.0,
-    "attendance_rate": 0.0112,
-    "term_week": 0.2246,
-    "day_of_week": 0.0753,
-    "is_exam_week": 0.6779,
-    "rolling_7day_avg": 0.0109
+    "attendance_rate": 0.0102,
+    "term_week": 0.2146,
+    "day_of_week": 0.0994,
+    "is_exam_week": 0.6736,
+    "rolling_7day_avg": 0.0022
   }
 }
