@@ -157,7 +157,13 @@ export default function ForecastPage() {
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
                 <XAxis dataKey="date" tick={{ fontSize: 11 }} interval={xAxisInterval} />
-                <YAxis tick={{ fontSize: 11 }} />
+                <YAxis
+                  tick={{ fontSize: 11 }}
+                  domain={[
+                    dataMin => Math.max(0, Math.floor(dataMin - 2)),
+                    dataMax => Math.ceil(dataMax + 2),
+                  ]}
+                />
                 <Tooltip
                   formatter={(val, name) =>
                     name === 'meals'
