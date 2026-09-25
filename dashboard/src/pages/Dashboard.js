@@ -9,11 +9,18 @@ import Topbar from '../components/Topbar';
 import StatCard from '../components/StatCard';
 import { forecastAPI } from '../services/api';
 
+const HORIZON_OPTIONS = [
+  { key: 'five_day', label: '5-Day' },
+  { key: 'month', label: 'Month' },
+  { key: 'term', label: 'Rest of Term' },
+];
+
 export default function Dashboard() {
   const [stats, setStats] = useState(null);
   const [forecasts, setForecasts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const [horizon, setHorizon] = useState('five_day');
 
   useEffect(() => {
     loadStats();
@@ -43,11 +50,12 @@ export default function Dashboard() {
   const handleGenerateForecast = async () => {
     setGenerating(true);
     try {
-      const res = await forecastAPI.generate();
+      const res = await forecastAPI.generate(undefined, horizon);
       setForecasts(res.data.forecasts);
       alert(`Forecast generated for ${res.data.forecasts.length} days.`);
     } catch (e) {
-      alert('Forecast generation failed. Check that the model is trained.');
+      alert(e.response?.data?.error ||
+        'Forecast generation failed. Check that the model is trained.');
     } finally {
       setGenerating(false);
     }
@@ -104,14 +112,26 @@ export default function Dashboard() {
           <div style={styles.forecastCard}>
             <div style={styles.forecastHeader}>
               <h3 style={styles.chartTitle}>Demand Forecast</h3>
-              <button
-                style={styles.generateBtn}
-                onClick={handleGenerateForecast}
-                disabled={generating}
-              >
-                <FiSettings style={styles.btnIcon} />
-                {generating ? 'Generating...' : 'Generate'}
-              </button>
+              <div style={styles.forecastHeaderActions}>
+                <select
+                  style={styles.horizonSelect}
+                  value={horizon}
+                  onChange={e => setHorizon(e.target.value)}
+                  disabled={generating}
+                >
+                  {HORIZON_OPTIONS.map(h => (
+                    <option key={h.key} value={h.key}>{h.label}</option>
+                  ))}
+                </select>
+                <button
+                  style={styles.generateBtn}
+                  onClick={handleGenerateForecast}
+                  disabled={generating}
+                >
+                  <FiSettings style={styles.btnIcon} />
+                  {generating ? 'Generating...' : 'Generate'}
+                </button>
+              </div>
             </div>
 
             {forecasts.length === 0 ? (
@@ -167,6 +187,10 @@ const styles = {
                   boxShadow: '0 2px 8px rgba(0,0,0,0.04)' },
   forecastHeader: { display: 'flex', justifyContent: 'space-between',
                     alignItems: 'center', marginBottom: 16 },
+  forecastHeaderActions: { display: 'flex', alignItems: 'center', gap: 8 },
+  horizonSelect: { border: '1px solid #E5E7EB', borderRadius: 8,
+                   padding: '7px 8px', fontSize: 12, fontWeight: 600,
+                   color: '#374151', background: '#fff', cursor: 'pointer' },
   generateBtn: { background: '#1A6E3C', color: '#fff', border: 'none',
                  borderRadius: 8, padding: '8px 14px', fontSize: 12,
                  fontWeight: 600, cursor: 'pointer', display: 'flex',

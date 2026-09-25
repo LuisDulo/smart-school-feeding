@@ -30,7 +30,10 @@ export const authAPI = {
 };
 
 export const forecastAPI = {
-  generate: (model) => api.post('/forecast/generate/', model ? { model } : {}),
+  generate: (model, horizon) => api.post('/forecast/generate/', {
+    ...(model ? { model } : {}),
+    ...(horizon ? { horizon } : {}),
+  }),
   history: () => api.get('/forecast/history/'),
   stats: () => api.get('/forecast/stats/'),
   models: () => api.get('/forecast/models/'),

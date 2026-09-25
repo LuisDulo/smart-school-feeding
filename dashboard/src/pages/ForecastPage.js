@@ -13,12 +13,19 @@ const MODEL_OPTIONS = [
   { key: 'xgboost', label: 'XGBoost' },
 ];
 
+const HORIZON_OPTIONS = [
+  { key: 'five_day', label: '5-Day' },
+  { key: 'month', label: 'Month' },
+  { key: 'term', label: 'Rest of Term' },
+];
+
 export default function ForecastPage() {
   const [forecasts, setForecasts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [modelInfo, setModelInfo] = useState(null);
   const [selectedModel, setSelectedModel] = useState('xgboost');
+  const [selectedHorizon, setSelectedHorizon] = useState('five_day');
 
   useEffect(() => {
     forecastAPI.history()
@@ -34,7 +41,7 @@ export default function ForecastPage() {
   const handleGenerate = async () => {
     setGenerating(true);
     try {
-      const res = await forecastAPI.generate(selectedModel);
+      const res = await forecastAPI.generate(selectedModel, selectedHorizon);
       setForecasts(prev => {
         const newDates = new Set(
           res.data.forecasts.map(f => f.forecast_date));
@@ -45,7 +52,8 @@ export default function ForecastPage() {
       });
       setModelInfo(res.data.model_info);
     } catch (e) {
-      alert('Generation failed. Ensure Django is running and model is trained.');
+      alert(e.response?.data?.error ||
+        'Generation failed. Ensure Django is running and model is trained.');
     } finally {
       setGenerating(false);
     }
@@ -69,7 +77,8 @@ export default function ForecastPage() {
           <p style={styles.modelBadge}>
             <FiBarChart2 style={styles.badgeIcon} />
             {MODEL_OPTIONS.find(m => m.key === selectedModel)?.label}
-            {' '}· 6 features · 5-day forecast
+            {' '}· 6 features ·{' '}
+            {HORIZON_OPTIONS.find(h => h.key === selectedHorizon)?.label} forecast
           </p>
           {modelInfo && (
             <p style={styles.modelDetail}>
@@ -95,6 +104,23 @@ export default function ForecastPage() {
               </button>
             ))}
           </div>
+
+          <h3 style={styles.chartTitle}>Forecast Range</h3>
+          <div style={styles.selectorRow}>
+            {HORIZON_OPTIONS.map(({ key, label }) => (
+              <button
+                key={key}
+                style={{
+                  ...styles.modelBtn,
+                  ...(selectedHorizon === key ? styles.modelBtnActive : {})
+                }}
+                onClick={() => setSelectedHorizon(key)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
           <button
             style={{ ...styles.generateBtn, ...(generating ? { opacity: 0.6 } : {}) }}
             onClick={handleGenerate}
@@ -103,7 +129,7 @@ export default function ForecastPage() {
             <FiSettings style={styles.btnIcon} />
             {generating
               ? 'Generating...'
-              : `Generate with ${MODEL_OPTIONS.find(m => m.key === selectedModel)?.label}`}
+              : `Generate ${HORIZON_OPTIONS.find(h => h.key === selectedHorizon)?.label} Forecast · ${MODEL_OPTIONS.find(m => m.key === selectedModel)?.label}`}
           </button>
         </div>
 
