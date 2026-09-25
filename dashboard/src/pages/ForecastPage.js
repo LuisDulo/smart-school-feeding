@@ -42,14 +42,14 @@ export default function ForecastPage() {
     setGenerating(true);
     try {
       const res = await forecastAPI.generate(selectedModel, selectedHorizon);
-      setForecasts(prev => {
-        const newDates = new Set(
-          res.data.forecasts.map(f => f.forecast_date));
-        const filtered = prev.filter(f => !newDates.has(f.forecast_date));
-        return [...filtered, ...res.data.forecasts]
-          .sort((a, b) => new Date(a.forecast_date) -
-                          new Date(b.forecast_date));
-      });
+      // Show exactly the just-generated batch, not merged with whatever
+      // was on screen before — a 5-day forecast run right after a Rest
+      // of Term run would otherwise get buried under months of older,
+      // far-future dates instead of replacing them.
+      setForecasts(
+        [...res.data.forecasts].sort((a, b) =>
+          new Date(a.forecast_date) - new Date(b.forecast_date))
+      );
       setModelInfo(res.data.model_info);
     } catch (e) {
       alert(e.response?.data?.error ||
@@ -59,12 +59,21 @@ export default function ForecastPage() {
     }
   };
 
-  const chartData = forecasts.slice(-20).map(f => ({
+  // `forecasts` is always exactly the last-generated batch (see
+  // handleGenerate), so the whole thing is shown — a 5-day forecast
+  // shows 5 points, a term forecast shows all of them. With many points
+  // (month/term), the axis thins its own labels via xAxisInterval below
+  // rather than a fixed slice silently dropping the earliest days.
+  const chartData = forecasts.map(f => ({
     date: new Date(f.forecast_date).toLocaleDateString(
       'en-KE', { day: 'numeric', month: 'short' }),
     meals: f.predicted_meals,
     cost: f.predicted_cost_ksh,
   }));
+  // Aim for roughly 8 evenly-spaced x-axis labels no matter how many
+  // points there are, so a term forecast's ~65 dates don't render as
+  // one unreadable smear of overlapping text.
+  const xAxisInterval = Math.max(0, Math.ceil(chartData.length / 8) - 1);
 
   return (
     <div style={styles.page}>
@@ -144,7 +153,7 @@ export default function ForecastPage() {
             <ResponsiveContainer width="100%" height={260}>
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
-                <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                <XAxis dataKey="date" tick={{ fontSize: 11 }} interval={xAxisInterval} />
                 <YAxis tick={{ fontSize: 11 }} />
                 <Tooltip
                   formatter={(val, name) =>
