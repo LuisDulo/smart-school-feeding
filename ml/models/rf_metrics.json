@@ -10,20 +10,20 @@
     "is_exam_week",
     "rolling_7day_avg"
   ],
-  "train_rows": 1600,
-  "test_rows": 400,
-  "mae": 1.1082,
-  "rmse": 1.331,
-  "r2": 0.7583,
-  "cv_mae_mean": 1.1292,
-  "cv_mae_std": 0.0469,
-  "cv_r2_mean": 0.7535,
+  "train_rows": 12000,
+  "test_rows": 3000,
+  "mae": 1.0965,
+  "rmse": 1.305,
+  "r2": 0.7824,
+  "cv_mae_mean": 1.1198,
+  "cv_mae_std": 0.0117,
+  "cv_r2_mean": 0.7691,
   "feature_importances": {
     "student_enrolment": 0.0,
-    "attendance_rate": 0.0858,
-    "term_week": 0.4312,
-    "day_of_week": 0.1711,
-    "is_exam_week": 0.288,
-    "rolling_7day_avg": 0.0239
+    "attendance_rate": 0.0832,
+    "term_week": 0.4288,
+    "day_of_week": 0.1756,
+    "is_exam_week": 0.2943,
+    "rolling_7day_avg": 0.0181
   }
 }
