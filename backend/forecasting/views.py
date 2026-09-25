@@ -104,13 +104,10 @@ def get_rolling_avg(school, days=7):
 
 
 # How far ahead each horizon looks, and a safety cap on the number of
-# weekday forecasts it can ever produce in one call (protects against a
-# misconfigured TermSchedule.end_date years in the future turning "term"
-# into an unbounded loop of DB writes).
+# weekday forecasts it can ever produce in one call.
 HORIZONS = {
     'five_day': {'lookahead_days': 7, 'max_forecasts': 5},
     'month': {'lookahead_days': 30, 'max_forecasts': 23},
-    'term': {'lookahead_days': None, 'max_forecasts': 130},
 }
 
 
@@ -133,10 +130,9 @@ class GenerateForecastView(APIView):
     Generate a demand forecast.
     POST /api/forecast/generate/
     Body: { "model": "linear_regression" | "random_forest" | "xgboost",
-            "horizon": "five_day" | "month" | "term" }
+            "horizon": "five_day" | "month" }
     Omitting "model" uses whichever model compare_models.py found best.
     Omitting "horizon" defaults to "five_day".
-    "term" forecasts every remaining school weekday in the current term.
     """
     permission_classes = [IsAuthenticated]
 
@@ -178,15 +174,7 @@ class GenerateForecastView(APIView):
         today = date.today()
         horizon_config = HORIZONS[horizon]
         max_forecasts = horizon_config['max_forecasts']
-
-        if horizon == 'term':
-            if term.end_date <= today:
-                return Response(
-                    {'error': 'The current term has already ended.'},
-                    status=status.HTTP_400_BAD_REQUEST)
-            lookahead_days = (term.end_date - today).days
-        else:
-            lookahead_days = horizon_config['lookahead_days']
+        lookahead_days = horizon_config['lookahead_days']
 
         rolling_avg = get_rolling_avg(school)
         forecasts = []
