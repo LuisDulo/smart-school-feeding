@@ -53,13 +53,14 @@ export default function ModelComparison() {
         `Forecast generated using ${res.data.model_used}. ` +
         `${res.data.forecasts.length} day(s) predicted.`);
       setLastModelUsed(res.data.model_used);
-      setForecasts(prev => {
-        const newDates = new Set(
-          res.data.forecasts.map(f => f.forecast_date));
-        const filtered = prev.filter(f => !newDates.has(f.forecast_date));
-        return [...filtered, ...res.data.forecasts]
-          .sort((a, b) => new Date(a.forecast_date) - new Date(b.forecast_date));
-      });
+      // Show exactly the just-generated batch, not merged with whatever
+      // was on screen before — a 5-day forecast run right after a Rest
+      // of Term run would otherwise get buried under months of older,
+      // far-future dates instead of replacing them.
+      setForecasts(
+        [...res.data.forecasts].sort((a, b) =>
+          new Date(a.forecast_date) - new Date(b.forecast_date))
+      );
     } catch (e) {
       setGenMsg(e.response?.data?.error || 'Generation failed. Ensure the model is trained.');
     } finally {
