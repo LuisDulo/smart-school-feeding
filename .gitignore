@@ -16,3 +16,6 @@ dashboard/build/
 .DS_Store
 Thumbs.db
 *.log
+
+# Local dev-tool config (not needed by the app itself)
+.claude/
