@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.exceptions import TokenError
 from meals.models import User, School
 from .serializers import (RegisterSerializer, LoginSerializer,
                            UserProfileSerializer, SchoolSerializer)
@@ -93,12 +94,46 @@ class ProfileView(APIView):
         return Response(UserProfileSerializer(request.user).data)
 
 
+class TokenRefreshView(APIView):
+    """
+    POST /api/auth/token/refresh/  { "refresh": "<token>" }
+
+    Exchanges a valid refresh token for a fresh access + refresh pair. The
+    presented refresh token is blacklisted (ROTATE_REFRESH_TOKENS +
+    BLACKLIST_AFTER_ROTATION), so replaying it afterwards fails. Implemented
+    here rather than with simplejwt's stock view because that one resolves the
+    `user_id` claim against Django's auth user table, not meals.User.
+    """
+    permission_classes = [AllowAny]
+    throttle_scope = 'refresh'
+
+    def post(self, request):
+        raw = request.data.get('refresh')
+        if not raw:
+            return Response({'error': 'refresh token is required.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        try:
+            old = RefreshToken(raw)  # rejects expired / blacklisted tokens
+            user = User.objects.get(id=old.get('user_id'))
+            old.blacklist()
+        except (TokenError, User.DoesNotExist):
+            return Response({'error': 'Invalid or expired refresh token.'},
+                            status=status.HTTP_401_UNAUTHORIZED)
+        return Response(get_tokens_for_user(user), status=status.HTTP_200_OK)
+
+
 class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        # Client-side logout — just return success.
-        # Token blacklisting can be added in a later sprint.
+        # If the client sends its refresh token, revoke it so it can no
+        # longer be exchanged for new access tokens.
+        raw = request.data.get('refresh')
+        if raw:
+            try:
+                RefreshToken(raw).blacklist()
+            except TokenError:
+                pass  # already expired/blacklisted — nothing to revoke
         return Response({'message': 'Logged out successfully.'},
                         status=status.HTTP_200_OK)
 
