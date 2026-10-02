@@ -61,7 +61,7 @@ class TestPaymentInitiate(TestCase):
     def test_minimum_amount_validation(self):
         response = self.client.post(
             '/api/payments/initiate/',
-            {'amount_cents': 5000, 'phone_number': '254708374149'},
+            {'amount_cents': 50, 'phone_number': '254708374149'},
             content_type='application/json',
             HTTP_AUTHORIZATION=f'Bearer {self.token}'
         )
