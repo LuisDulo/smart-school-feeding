@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     # Third party
     'rest_framework',
     'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
     # Our apps
     'accounts',
@@ -152,6 +153,7 @@ REST_FRAMEWORK = {
         # Brute-force protection on the credential endpoints.
         'login': '10/min',
         'register': '20/hour',
+        'refresh': '30/min',
     },
     # Set NUM_PROXIES (e.g. 1 behind ngrok/nginx) so throttling keys on the
     # real client IP from X-Forwarded-For instead of the proxy's address.
@@ -162,7 +164,7 @@ SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(hours=12),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'ROTATE_REFRESH_TOKENS': True,
-    'BLACKLIST_AFTER_ROTATION': False,
+    'BLACKLIST_AFTER_ROTATION': True,
     'ALGORITHM': 'HS256',
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
