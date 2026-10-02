@@ -141,6 +141,21 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': (
         'rest_framework.permissions.IsAuthenticated',
     ),
+    'DEFAULT_THROTTLE_CLASSES': (
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+        'rest_framework.throttling.ScopedRateThrottle',
+    ),
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '300/min',
+        'user': '2000/min',
+        # Brute-force protection on the credential endpoints.
+        'login': '10/min',
+        'register': '20/hour',
+    },
+    # Set NUM_PROXIES (e.g. 1 behind ngrok/nginx) so throttling keys on the
+    # real client IP from X-Forwarded-For instead of the proxy's address.
+    'NUM_PROXIES': int(os.environ['NUM_PROXIES']) if os.getenv('NUM_PROXIES') else None,
 }
 
 SIMPLE_JWT = {
