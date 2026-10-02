@@ -10,6 +10,7 @@ from meals.models import (
     MealDistributionEvent, AnomalyFlag, DemandForecast
 )
 from core.permissions import IsSuperAdmin
+from .password_rules import password_problems
 from core.pagination import paginate_queryset
 
 logger = logging.getLogger(__name__)
@@ -262,6 +263,13 @@ class SuperAdminSchoolListView(APIView):
                 {'error': f'A school named "{name}" already exists.'},
                 status=status.HTTP_400_BAD_REQUEST)
 
+        if admin_email and admin_password:
+            problems = password_problems(
+                admin_password, admin_name or f'{name} Admin', admin_email)
+            if problems:
+                return Response({'error': ' '.join(problems)},
+                                status=status.HTTP_400_BAD_REQUEST)
+
         school = School.objects.create(
             name=name,
             county=county,
@@ -498,6 +506,11 @@ class SuperAdminStaffListView(APIView):
             return Response(
                 {'error': 'A user with this email already exists.'},
                 status=status.HTTP_400_BAD_REQUEST)
+
+        problems = password_problems(password, full_name, email)
+        if problems:
+            return Response({'error': ' '.join(problems)},
+                            status=status.HTTP_400_BAD_REQUEST)
 
         hashed = bcrypt.hashpw(
             password.encode(), bcrypt.gensalt()).decode()

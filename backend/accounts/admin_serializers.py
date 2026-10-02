@@ -1,5 +1,6 @@
 import bcrypt
 from rest_framework import serializers
+from .password_rules import validate_password_or_raise
 from meals.models import User, MealAccount
 
 
@@ -15,6 +16,11 @@ class AdminCreateStudentSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(min_length=8)
     starting_balance_cents = serializers.IntegerField(min_value=0, default=0)
+
+    def validate(self, attrs):
+        validate_password_or_raise(
+            attrs['password'], attrs.get('full_name', ''), attrs.get('email', ''))
+        return attrs
 
     def validate_email(self, value):
         if User.objects.filter(email=value).exists():
@@ -44,6 +50,11 @@ class AdminCreateParentSerializer(serializers.Serializer):
     password = serializers.CharField(min_length=8)
     student_ids = serializers.ListField(
         child=serializers.IntegerField(), required=False, default=list)
+
+    def validate(self, attrs):
+        validate_password_or_raise(
+            attrs['password'], attrs.get('full_name', ''), attrs.get('email', ''))
+        return attrs
 
     def validate_email(self, value):
         if User.objects.filter(email=value).exists():
