@@ -1,4 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import { authAPI } from '../services/api';
 
 const AuthContext = createContext(null);
 
@@ -21,6 +22,13 @@ export function AuthProvider({ children }) {
   };
 
   const logout = () => {
+    const refresh = localStorage.getItem('refresh_token');
+    const access = localStorage.getItem('access_token');
+    if (refresh && access) {
+      // Best effort: revoke the refresh token server-side, then clear
+      // local state regardless of whether the request succeeds.
+      authAPI.logout(refresh, access).catch(() => {});
+    }
     localStorage.clear();
     setUser(null);
   };
