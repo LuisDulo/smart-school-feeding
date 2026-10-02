@@ -27,7 +27,7 @@ export const authAPI = {
   register: (data) => api.post('/auth/register/', data),
   login: (data) => api.post('/auth/login/', data),
   profile: () => api.get('/auth/profile/'),
-  logout: () => api.post('/auth/logout/'),
+  logout: (refresh) => api.post('/auth/logout/', { refresh }),
   getSchools: () => api.get('/auth/schools/'),
 };
 

@@ -27,6 +27,8 @@ api.interceptors.response.use(
 export const authAPI = {
   login: (data) => api.post('/auth/login/', data),
   profile: () => api.get('/auth/profile/'),
+  logout: (refresh, access) => api.post('/auth/logout/', { refresh },
+    { headers: { Authorization: `Bearer ${access}` } }),
 };
 
 export const forecastAPI = {

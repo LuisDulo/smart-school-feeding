@@ -47,6 +47,12 @@ export function AuthProvider({ children }) {
   };
 
   const logout = async () => {
+    try {
+      const refresh = await AsyncStorage.getItem('refresh_token');
+      if (refresh) await authAPI.logout(refresh); // awaited before storage is cleared
+    } catch (e) {
+      // Offline or token already invalid — still log out locally.
+    }
     await AsyncStorage.multiRemove(['access_token', 'refresh_token', 'user_data']);
     setUser(null);
   };
