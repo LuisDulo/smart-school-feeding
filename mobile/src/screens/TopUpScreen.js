@@ -24,14 +24,14 @@ export default function TopUpScreen({ navigation }) {
   const getAmountCents = () => {
     if (selectedAmount) return selectedAmount;
     const ksh = parseFloat(customAmount);
-    if (!isNaN(ksh) && ksh >= 100) return Math.round(ksh * 100);
+    if (!isNaN(ksh) && ksh >= 1) return Math.round(ksh * 100);
     return null;
   };
 
   const handlePay = async () => {
     const amountCents = getAmountCents();
     if (!amountCents) {
-      Alert.alert('Error', 'Please select or enter a valid amount (minimum KES 100).');
+      Alert.alert('Error', 'Please select or enter a valid amount (minimum KES 1).');
       return;
     }
     if (!phone || phone.length < 9) {

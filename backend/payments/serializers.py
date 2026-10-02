@@ -3,7 +3,7 @@ from meals.models import PaymentTransaction, MealAccount, CreditRequest
 
 
 class InitiatePaymentSerializer(serializers.Serializer):
-    amount_cents = serializers.IntegerField(min_value=10000)  # minimum KES 100
+    amount_cents = serializers.IntegerField(min_value=100)  # minimum KES 1
     phone_number = serializers.CharField(max_length=15)
 
     def validate_phone_number(self, value):
@@ -16,8 +16,8 @@ class InitiatePaymentSerializer(serializers.Serializer):
         return value
 
     def validate_amount_cents(self, value):
-        if value < 10000:
-            raise serializers.ValidationError("Minimum top-up is KES 100.")
+        if value < 100:
+            raise serializers.ValidationError("Minimum top-up is KES 1.")
         if value > 1000000:
             raise serializers.ValidationError("Maximum top-up is KES 10,000.")
         return value
