@@ -29,7 +29,9 @@ class RegisterSerializer(serializers.ModelSerializer):
         return value
 
     def validate_role(self, value):
-        allowed = ['parent', 'student', 'kitchen', 'bursar', 'admin']
+        # Staff (admin/bursar/kitchen) accounts are provisioned by a school
+        # admin or the super admin, never through public self-registration.
+        allowed = ['parent', 'student']
         if value not in allowed:
             raise serializers.ValidationError(f"Role must be one of: {allowed}")
         return value
