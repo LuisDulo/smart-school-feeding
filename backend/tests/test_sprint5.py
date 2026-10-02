@@ -227,7 +227,7 @@ class TestPayments(TestCase):
         token = get_token(self.client, 'bursar@pay.com')
         res = self.client.post(
             '/api/payments/initiate/',
-            {'amount_cents': 1000,
+            {'amount_cents': 50,
              'phone_number': '254708374149'},
             content_type='application/json',
             HTTP_AUTHORIZATION=f'Bearer {self.token}')
