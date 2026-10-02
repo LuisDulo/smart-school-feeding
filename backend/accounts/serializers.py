@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from .password_rules import validate_password_or_raise
 from meals.models import User, School, MealAccount
 import bcrypt
 
@@ -16,6 +17,11 @@ class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['full_name', 'email', 'password', 'role', 'school_id']
+
+    def validate(self, attrs):
+        validate_password_or_raise(
+            attrs['password'], attrs.get('full_name', ''), attrs.get('email', ''))
+        return attrs
 
     def validate_email(self, value):
         if User.objects.filter(email=value).exists():

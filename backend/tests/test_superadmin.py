@@ -91,7 +91,7 @@ class TestSuperAdmin(TestCase):
                 'contact_email': 'new@school.ac.ke',
                 'admin_name': 'New Admin',
                 'admin_email': 'newadmin@school.ac.ke',
-                'admin_password': 'NewAdmin123!',
+                'admin_password': 'Tr1cky-Meadow-Lamp',
             },
             content_type='application/json',
             HTTP_AUTHORIZATION=f'Bearer {self.token}')
@@ -135,7 +135,7 @@ class TestSuperAdmin(TestCase):
                 'role': 'kitchen',
                 'full_name': 'New Kitchen',
                 'email': 'newkitchen@s1.test',
-                'password': 'Kitchen123!',
+                'password': 'Violet-Harbor-42',
             },
             content_type='application/json',
             HTTP_AUTHORIZATION=f'Bearer {self.token}')
