@@ -153,7 +153,12 @@ SIMPLE_JWT = {
 }
 
 # ---------------------------------------------------------------------------
-# CORS (development only — restrict this before going to production)
+# CORS (allow-all only in DEBUG; otherwise an explicit allow-list from env)
 # ---------------------------------------------------------------------------
 
-CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv('CORS_ALLOWED_ORIGINS', 'http://localhost:3000').split(',')
+    if origin.strip()
+]
+CORS_ALLOW_ALL_ORIGINS = DEBUG
