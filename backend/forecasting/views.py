@@ -9,7 +9,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
-from core.permissions import IsAdminOrBursar
+from core.permissions import IsAdminOrBursar, IsSuperAdmin
 from meals.models import (DemandForecast, MealDistributionEvent,
                            User, TermSchedule, MealAccount,
                            PaymentTransaction, AnomalyFlag)
@@ -290,10 +290,11 @@ class ActiveForecastModelView(APIView):
 class ModelComparisonView(APIView):
     """
     Side-by-side metrics for all forecasting models plus the balance
-    risk classifier, for the ML Model Comparison dashboard page.
+    risk classifier, for the ML Model Comparison page of the super admin
+    dashboard (platform operator only).
     GET /api/forecast/models/
     """
-    permission_classes = [IsAdminOrBursar]
+    permission_classes = [IsSuperAdmin]
 
     def get(self, request):
         data = {
