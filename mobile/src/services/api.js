@@ -1,5 +1,6 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { File, Paths } from 'expo-file-system';
 
 // This must be your development machine's local IPv4 address on the same
 // WiFi network as your phone (a physical phone/emulator can't reach
@@ -71,3 +72,34 @@ export const supportAPI = {
 };
 
 export default api;
+
+// Downloads a meal report (PDF or CSV) for the selected child into the app's
+// cache folder and returns the saved File. The endpoint needs the Bearer token,
+// so this uses a download task with an Authorization header rather than a
+// plain link. The file is checked after downloading because an HTTP error body
+// (JSON) would otherwise be saved as if it were the report.
+export async function downloadMealReport({ months, mealAccountId, fileFormat }) {
+  const token = await AsyncStorage.getItem('access_token');
+  const query = new URLSearchParams({
+    months: String(months || 3),
+    file_format: fileFormat,
+  });
+  if (mealAccountId) query.append('meal_account_id', String(mealAccountId));
+
+  const url = `${BASE_URL}/payments/meal-report/?${query.toString()}`;
+  const file = new File(Paths.cache, `meal-report-${Date.now()}.${fileFormat}`);
+  const task = File.createDownloadTask(url, file, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const saved = await task.downloadAsync();
+
+  const bytes = saved ? await saved.bytes() : null;
+  const isPdf = bytes && bytes.length > 4 &&
+    String.fromCharCode(bytes[0], bytes[1], bytes[2], bytes[3]) === '%PDF';
+  const isCsv = bytes && bytes.length > 0 && bytes[0] !== 0x7b; // 0x7b is "{" (a JSON error)
+  if (!(fileFormat === 'pdf' ? isPdf : isCsv)) {
+    try { file.delete(); } catch (e) { /* nothing to clean up */ }
+    throw new Error('The server did not return a report.');
+  }
+  return saved;
+}
