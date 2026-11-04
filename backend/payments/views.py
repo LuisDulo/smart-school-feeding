@@ -2,7 +2,7 @@ import json
 import logging
 from django.views.decorators.csrf import csrf_exempt
 from django.db import transaction as db_transaction
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -18,6 +18,8 @@ from .serializers import (InitiatePaymentSerializer,
                            ReviewCreditRequestSerializer)
 from core.permissions import IsParentOrStudent, IsAdminOrBursar, IsSchoolAdmin
 from core.pagination import paginate_queryset
+from .meal_report import (build_report, monthly_breakdown, render_csv,
+                          render_pdf, report_filename)
 
 logger = logging.getLogger(__name__)
 
@@ -448,10 +450,6 @@ class MonthlySpendingReportView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        import calendar
-        from datetime import date
-        from meals.models import MealDistributionEvent
-
         meal_account_id = request.query_params.get('meal_account_id')
         try:
             meal_account = resolve_meal_account(request.user, meal_account_id)
@@ -460,47 +458,9 @@ class MonthlySpendingReportView(APIView):
                             status=status.HTTP_404_NOT_FOUND)
 
         months_count = max(1, min(int(request.query_params.get('months', 3)), 12))
-        today = date.today()
-        monthly_data = []
-
-        for i in range(months_count - 1, -1, -1):
-            month_date = date(today.year, today.month, 1)
-            for _ in range(i):
-                if month_date.month == 1:
-                    month_date = date(month_date.year - 1, 12, 1)
-                else:
-                    month_date = date(month_date.year, month_date.month - 1, 1)
-
-            last_day = calendar.monthrange(month_date.year, month_date.month)[1]
-            month_end = date(month_date.year, month_date.month, last_day)
-
-            payments = PaymentTransaction.objects.filter(
-                meal_account=meal_account,
-                status='confirmed',
-                created_at__date__gte=month_date,
-                created_at__date__lte=month_end
-            )
-            total_topped_up = sum(p.amount_cents for p in payments) / 100
-            num_transactions = payments.count()
-
-            meals = MealDistributionEvent.objects.filter(
-                meal_account=meal_account,
-                meal_date__gte=month_date,
-                meal_date__lte=month_end
-            )
-            meals_count = meals.count()
-            meals_cost = sum(m.amount_cents for m in meals) / 100
-
-            monthly_data.append({
-                'month': month_date.strftime('%B %Y'),
-                'month_short': month_date.strftime('%b'),
-                'year': month_date.year,
-                'total_topped_up_ksh': total_topped_up,
-                'num_top_ups': num_transactions,
-                'meals_collected': meals_count,
-                'meals_cost_ksh': meals_cost,
-                'avg_cost_per_day': round(meals_cost / last_day, 2),
-            })
+        monthly_data = monthly_breakdown(meal_account, months_count)
+        for month in monthly_data:
+            month.pop('month_start', None)
 
         current = monthly_data[-1] if monthly_data else {}
         previous = monthly_data[-2] if len(monthly_data) >= 2 else {}
@@ -517,6 +477,46 @@ class MonthlySpendingReportView(APIView):
             'total_spent_this_month_ksh': current.get('meals_cost_ksh', 0),
             'total_topped_up_this_month_ksh': current.get('total_topped_up_ksh', 0),
         })
+
+
+class MealReportDownloadView(APIView):
+    """
+    Downloadable meal report (monthly summary plus every meal served) for the
+    logged-in user's meal account — their own if a student, their selected
+    child's if a parent (see resolve_meal_account).
+    GET /api/payments/meal-report/?months=3&file_format=pdf|csv&meal_account_id=
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        fmt = request.query_params.get('file_format', 'pdf').lower()
+        if fmt not in ('pdf', 'csv'):
+            return Response({'error': "file_format must be 'pdf' or 'csv'."},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            months_count = max(1, min(int(request.query_params.get('months', 3)), 12))
+        except ValueError:
+            return Response({'error': 'months must be a whole number.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            meal_account = resolve_meal_account(
+                request.user, request.query_params.get('meal_account_id'))
+        except (MealAccount.DoesNotExist, ValueError):
+            return Response({'error': 'Meal account not found.'},
+                            status=status.HTTP_404_NOT_FOUND)
+
+        data = build_report(meal_account, months_count)
+        if fmt == 'csv':
+            body, content_type = render_csv(data), 'text/csv; charset=utf-8'
+        else:
+            body, content_type = render_pdf(data), 'application/pdf'
+
+        response = HttpResponse(body, content_type=content_type)
+        response['Content-Disposition'] = (
+            f'attachment; filename="{report_filename(data, fmt)}"')
+        return response
 
 
 class BalanceTrendView(APIView):

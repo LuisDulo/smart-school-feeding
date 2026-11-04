@@ -4,7 +4,8 @@ from .views import (InitiatePaymentView, mpesa_callback,
                     MealBalanceView, AllStudentBalancesView,
                     MyChildrenView, ApplyCreditRequestView,
                     CreditRequestQueueView, ReviewCreditRequestView,
-                    MonthlySpendingReportView, BalanceTrendView,
+                    MonthlySpendingReportView, MealReportDownloadView,
+                    BalanceTrendView,
                     ActivityFeedView, BalanceRiskScoreView)
 
 urlpatterns = [
@@ -19,6 +20,7 @@ urlpatterns = [
     path('credit-requests/queue/', CreditRequestQueueView.as_view(), name='credit-requests-queue'),
     path('credit-requests/<int:request_id>/review/', ReviewCreditRequestView.as_view(), name='credit-requests-review'),
     path('monthly-report/', MonthlySpendingReportView.as_view(), name='monthly-report'),
+    path('meal-report/', MealReportDownloadView.as_view(), name='meal-report-download'),
     path('balance-trend/', BalanceTrendView.as_view(), name='balance-trend'),
     path('activity/', ActivityFeedView.as_view(), name='activity-feed'),
     path('risk-score/', BalanceRiskScoreView.as_view(), name='risk-score'),

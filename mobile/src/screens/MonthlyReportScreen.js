@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ActivityIndicator,
-  TouchableOpacity, ScrollView, Dimensions
+  TouchableOpacity, ScrollView, Dimensions, Alert
 } from 'react-native';
 import { BarChart } from 'react-native-chart-kit';
 import { Feather } from '@expo/vector-icons';
-import { paymentsAPI } from '../services/api';
+import * as Sharing from 'expo-sharing';
+import { paymentsAPI, downloadMealReport } from '../services/api';
 
 const { width } = Dimensions.get('window');
 
@@ -14,6 +15,7 @@ export default function MonthlyReportScreen({ navigation, route }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [months, setMonths] = useState(3);
+  const [downloading, setDownloading] = useState(null);
 
   useEffect(() => {
     loadReport();
@@ -28,6 +30,28 @@ export default function MonthlyReportScreen({ navigation, route }) {
       console.log('Monthly report error:', e.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDownload = async (fileFormat) => {
+    setDownloading(fileFormat);
+    try {
+      const file = await downloadMealReport({ months, mealAccountId, fileFormat });
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(file.uri, {
+          mimeType: fileFormat === 'pdf' ? 'application/pdf' : 'text/csv',
+          dialogTitle: 'Save or share meal report',
+          UTI: fileFormat === 'pdf' ? 'com.adobe.pdf' : 'public.comma-separated-values-text',
+        });
+      } else {
+        Alert.alert('Report downloaded', `Saved to ${file.uri}`);
+      }
+    } catch (e) {
+      console.log('Meal report download error:', e.message);
+      Alert.alert('Download failed',
+        'Could not download the meal report. Check your connection and try again.');
+    } finally {
+      setDownloading(null);
     }
   };
 
@@ -84,6 +108,39 @@ export default function MonthlyReportScreen({ navigation, route }) {
         ) : data ? (
           <>
             <Text style={styles.studentLabel}>Report for {data.student_name}</Text>
+
+            <View style={styles.downloadCard}>
+              <View style={styles.downloadHeader}>
+                <Feather name="download" size={18} color="#1A3A5C" />
+                <Text style={styles.downloadTitle}>Download meal report</Text>
+              </View>
+              <Text style={styles.downloadNote}>
+                Monthly summary and every meal served over the last{' '}
+                {months} {months === 1 ? 'month' : 'months'}.
+              </Text>
+              <View style={styles.downloadRow}>
+                <TouchableOpacity
+                  style={[styles.downloadBtn, styles.downloadBtnPrimary,
+                    downloading && styles.downloadBtnDisabled]}
+                  onPress={() => handleDownload('pdf')}
+                  disabled={!!downloading}
+                >
+                  {downloading === 'pdf'
+                    ? <ActivityIndicator color="#fff" />
+                    : <Text style={styles.downloadBtnPrimaryText}>Download PDF</Text>}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.downloadBtn, styles.downloadBtnOutline,
+                    downloading && styles.downloadBtnDisabled]}
+                  onPress={() => handleDownload('csv')}
+                  disabled={!!downloading}
+                >
+                  {downloading === 'csv'
+                    ? <ActivityIndicator color="#1A6E3C" />
+                    : <Text style={styles.downloadBtnOutlineText}>CSV (spreadsheet)</Text>}
+                </TouchableOpacity>
+              </View>
+            </View>
 
             <View style={styles.summaryGrid}>
               {summaryCards.map(s => (
@@ -169,6 +226,23 @@ const styles = StyleSheet.create({
   },
   title: { color: '#fff', fontSize: 18, fontWeight: '700' },
   content: { padding: 20, paddingBottom: 40 },
+  downloadCard: {
+    backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 16,
+    borderWidth: 1, borderColor: '#E5E7EB',
+  },
+  downloadHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 },
+  downloadTitle: { fontSize: 15, fontWeight: '700', color: '#1A3A5C' },
+  downloadNote: { fontSize: 12, color: '#6B7280', marginBottom: 12 },
+  downloadRow: { flexDirection: 'row', gap: 10 },
+  downloadBtn: {
+    flex: 1, borderRadius: 8, paddingVertical: 11, alignItems: 'center',
+    justifyContent: 'center', minHeight: 42,
+  },
+  downloadBtnPrimary: { backgroundColor: '#1A6E3C' },
+  downloadBtnPrimaryText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  downloadBtnOutline: { borderWidth: 1.5, borderColor: '#1A6E3C', backgroundColor: '#fff' },
+  downloadBtnOutlineText: { color: '#1A6E3C', fontWeight: '700', fontSize: 13 },
+  downloadBtnDisabled: { opacity: 0.6 },
   periodRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
   periodBtn: {
     flex: 1, borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 8,
