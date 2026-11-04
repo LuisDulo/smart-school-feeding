@@ -8,7 +8,6 @@ import StudentBalances from './pages/StudentBalances';
 import ServeMeals from './pages/ServeMeals';
 import MealDistribution from './pages/MealDistribution';
 import ForecastPage from './pages/ForecastPage';
-import ModelComparison from './pages/ModelComparison';
 import BalanceRisk from './pages/BalanceRisk';
 import AnomalyFlags from './pages/AnomalyFlags';
 import Reports from './pages/Reports';
@@ -21,6 +20,7 @@ import SuperAdminSidebar from './components/SuperAdminSidebar';
 import SAOverview from './pages/superadmin/SAOverview';
 import SASchools from './pages/superadmin/SASchools';
 import SAAnalytics from './pages/superadmin/SAAnalytics';
+import SAModelComparison from './pages/superadmin/SAModelComparison';
 import SAReports from './pages/superadmin/SAReports';
 import SAStudents from './pages/superadmin/SAStudents';
 import SAStaff from './pages/superadmin/SAStaff';
@@ -101,7 +101,6 @@ const PAGES = {
   credit: CreditRequests,
   issues: SupportIssues,
   forecast: ForecastPage,
-  models: ModelComparison,
   risk: BalanceRisk,
   anomalies: AnomalyFlags,
   reports: Reports,
@@ -138,6 +137,8 @@ function AppInner() {
           return <SASchools onDrillDown={handleDrillDown} />;
         case 'analytics':
           return <SAAnalytics />;
+        case 'models':
+          return <SAModelComparison />;
         case 'students':
           return <SAStudents />;
         case 'staff':

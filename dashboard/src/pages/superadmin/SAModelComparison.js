@@ -6,10 +6,9 @@ import {
 import {
   FiAward, FiCheckCircle, FiXCircle
 } from 'react-icons/fi';
-import Topbar from '../components/Topbar';
-import { forecastAPI } from '../services/api';
+import { forecastAPI } from '../../services/api';
 
-export default function ModelComparison() {
+export default function SAModelComparison() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -65,10 +64,13 @@ export default function ModelComparison() {
 
   return (
     <div style={styles.page}>
-      <Topbar
-        title="ML Model Comparison"
-        subtitle="Linear Regression · Random Forest · XGBoost"
-      />
+      <div style={styles.topbar}>
+        <h1 style={styles.title}>ML Model Comparison</h1>
+        <p style={styles.subtitle}>
+          Forecasting models and the balance-risk classifier, evaluated on
+          the same data. The best forecasting model is used automatically.
+        </p>
+      </div>
       <div style={styles.content}>
         <div style={styles.headerRow}>
           <div style={styles.statusRow}>
@@ -227,6 +229,9 @@ const styles = {
           background: '#F7F9FC', overflow: 'auto' },
   loading: { display: 'flex', alignItems: 'center', justifyContent: 'center',
              height: '100vh', color: '#6B7280' },
+  topbar: { background: '#1A3A5C', padding: '20px 32px' },
+  title: { color: '#fff', fontSize: 22, fontWeight: 700, margin: 0 },
+  subtitle: { color: '#6B9AB8', fontSize: 13, margin: '4px 0 0' },
   content: { padding: 32 },
   headerRow: { display: 'flex', justifyContent: 'space-between',
                alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 12 },

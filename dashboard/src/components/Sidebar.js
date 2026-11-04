@@ -2,7 +2,7 @@ import React from 'react';
 import {
   FiHome, FiUsers, FiTrendingUp, FiAlertTriangle, FiAlertCircle,
   FiClipboard, FiLogOut, FiUserPlus, FiCreditCard, FiHelpCircle,
-  FiSend, FiCpu
+  FiSend
 } from 'react-icons/fi';
 import { MdOutlineRestaurant, MdOutlineSchool, MdOutlineRoomService, MdOutlineMenuBook } from 'react-icons/md';
 import { useAuth } from '../context/AuthContext';
@@ -11,7 +11,7 @@ import { useAuth } from '../context/AuthContext';
 // corresponding view's permission_classes) so a role never sees a nav
 // item that just 403s or silently shows nothing when clicked:
 //  - balances/credit/issues/anomalies/reports -> IsAdminOrBursar
-//  - models/risk                              -> IsAdminOrBursar
+//  - risk                                     -> IsAdminOrBursar
 //  - serve                                    -> IsKitchenStaff
 //  - menu/accounts                            -> IsSchoolAdmin (write);
 //    kept out of kitchen/bursar nav since there's nothing for them to do there
@@ -26,7 +26,6 @@ const NAV_ITEMS = [
   { key: 'credit',     label: 'Credit Requests',   Icon: FiCreditCard,         roles: ['admin', 'bursar'] },
   { key: 'issues',     label: 'Support Issues',    Icon: FiHelpCircle,         roles: ['admin', 'bursar'] },
   { key: 'forecast',   label: 'Demand Forecast',   Icon: FiTrendingUp,         roles: ['admin', 'bursar', 'kitchen'] },
-  { key: 'models',     label: 'ML Model Comparison', Icon: FiCpu,              roles: ['admin', 'bursar'] },
   { key: 'risk',       label: 'Balance Risk',      Icon: FiAlertCircle,        roles: ['admin', 'bursar'] },
   { key: 'anomalies',  label: 'Anomaly Flags',     Icon: FiAlertTriangle,      roles: ['admin', 'bursar'] },
   { key: 'reports',    label: 'Reports',           Icon: FiClipboard,         roles: ['admin', 'bursar'] },

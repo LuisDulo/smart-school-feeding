@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   FiGlobe, FiBarChart2, FiUsers, FiUser,
-  FiAlertTriangle, FiClipboard, FiKey, FiLogOut, FiInbox
+  FiAlertTriangle, FiClipboard, FiKey, FiLogOut, FiInbox, FiCpu
 } from 'react-icons/fi';
 import { MdOutlineSchool } from 'react-icons/md';
 import { useAuth } from '../context/AuthContext';
@@ -10,6 +10,7 @@ const NAV = [
   { key: 'overview',   label: 'Overview',         Icon: FiGlobe },
   { key: 'schools',    label: 'Schools',           Icon: MdOutlineSchool },
   { key: 'analytics',  label: 'Analytics',         Icon: FiBarChart2 },
+  { key: 'models',     label: 'Model Comparison',  Icon: FiCpu },
   { key: 'students',   label: 'All Students',      Icon: FiUsers },
   { key: 'staff',      label: 'Staff Management',  Icon: FiUser },
   { key: 'anomalies',  label: 'Anomaly Flags',     Icon: FiAlertTriangle },
