@@ -53,7 +53,7 @@ export default function Dashboard() {
   const handleGenerateForecast = async () => {
     setGenerating(true);
     try {
-      const res = await forecastAPI.generate(undefined, horizon);
+      const res = await forecastAPI.generate(horizon);
       setForecasts(res.data.forecasts);
       alert(`Forecast generated for ${res.data.forecasts.length} days.`);
     } catch (e) {
@@ -141,7 +141,7 @@ export default function Dashboard() {
               <div style={styles.emptyForecast}>
                 <p>No forecasts yet.</p>
                 <p style={{ fontSize: 12, color: '#9CA3AF' }}>
-                  Click Generate to run the Linear Regression model.
+                  Click Generate to produce a forecast with the best-performing model.
                 </p>
               </div>
             ) : (

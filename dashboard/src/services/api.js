@@ -32,10 +32,12 @@ export const authAPI = {
 };
 
 export const forecastAPI = {
-  generate: (model, horizon) => api.post('/forecast/generate/', {
-    ...(model ? { model } : {}),
+  // The model is chosen by the system (best in the model comparison); callers
+  // only pick the horizon.
+  generate: (horizon) => api.post('/forecast/generate/', {
     ...(horizon ? { horizon } : {}),
   }),
+  activeModel: () => api.get('/forecast/active-model/'),
   history: () => api.get('/forecast/history/'),
   stats: () => api.get('/forecast/stats/'),
   models: () => api.get('/forecast/models/'),
