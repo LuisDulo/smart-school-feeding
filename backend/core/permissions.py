@@ -36,6 +36,14 @@ class IsAdminOrBursar(BasePermission):
                     request.user.role in ['admin', 'bursar'])
 
 
+class IsSchoolStaff(BasePermission):
+    """Admin, bursar or kitchen staff of a school (never parents or students)."""
+    def has_permission(self, request, view):
+        return bool(request.user and
+                    request.user.is_authenticated and
+                    request.user.role in ['admin', 'bursar', 'kitchen'])
+
+
 class IsSuperAdmin(BasePermission):
     def has_permission(self, request, view):
         return bool(request.user and

@@ -9,7 +9,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
-from core.permissions import IsAdminOrBursar, IsSuperAdmin
+from core.permissions import IsAdminOrBursar, IsSchoolStaff, IsSuperAdmin
 from meals.models import (DemandForecast, MealDistributionEvent,
                            User, TermSchedule, MealAccount,
                            PaymentTransaction, AnomalyFlag)
@@ -143,7 +143,7 @@ class GenerateForecastView(APIView):
     test-set MAE (DEFAULT_MODEL_KEY). Any "model" value in the body is
     ignored. Omitting "horizon" defaults to "five_day".
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsSchoolStaff]
 
     def post(self, request):
         model_key = DEFAULT_MODEL_KEY
@@ -253,7 +253,7 @@ class ForecastHistoryView(APIView):
     Get saved forecasts for the last 30 days.
     GET /api/forecast/history/
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsSchoolStaff]
 
     def get(self, request):
         forecasts = DemandForecast.objects.filter(
@@ -270,7 +270,7 @@ class ActiveForecastModelView(APIView):
     to the model comparison), so the UI can show it without offering a choice.
     GET /api/forecast/active-model/
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsSchoolStaff]
 
     def get(self, request):
         info = MODELS[DEFAULT_MODEL_KEY]
@@ -331,7 +331,7 @@ class DashboardStatsView(APIView):
     Main dashboard summary stats.
     GET /api/forecast/stats/
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsSchoolStaff]
 
     def get(self, request):
         school = request.user.school

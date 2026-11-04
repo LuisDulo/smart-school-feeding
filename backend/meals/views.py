@@ -8,7 +8,8 @@ from django.core.exceptions import ValidationError
 from .models import (MealDistributionEvent, MealAccount,
                       User, PaymentTransaction, MenuItem, MealCombo)
 from rest_framework import serializers
-from core.permissions import IsKitchenStaff, IsAdminOrBursar, IsSchoolAdmin
+from core.permissions import (IsKitchenStaff, IsAdminOrBursar, IsSchoolAdmin,
+                              IsSchoolStaff)
 from core.pagination import paginate_queryset
 
 
@@ -337,7 +338,7 @@ class DailyDistributionLogView(APIView):
     GET /api/meals/log/
     GET /api/meals/log/?date=2026-06-15
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsSchoolStaff]
 
     def get(self, request):
         user = request.user

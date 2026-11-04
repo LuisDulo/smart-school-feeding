@@ -88,7 +88,7 @@ class ScoreTransactionView(APIView):
     Body: { transaction_id: int }
     Called automatically after each confirmed payment.
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsAdminOrBursar]
 
     def post(self, request):
         if not IF_MODEL_LOADED:
@@ -103,7 +103,9 @@ class ScoreTransactionView(APIView):
 
         try:
             tx = PaymentTransaction.objects.select_related(
-                'meal_account').get(id=tx_id, status='confirmed')
+                'meal_account').get(
+                id=tx_id, status='confirmed',
+                meal_account__student__school=request.user.school)
         except PaymentTransaction.DoesNotExist:
             return Response({'error': 'Confirmed transaction not found.'},
                             status=status.HTTP_404_NOT_FOUND)
@@ -186,7 +188,9 @@ class ReviewFlagView(APIView):
 
     def post(self, request, flag_id):
         try:
-            flag = AnomalyFlag.objects.get(id=flag_id)
+            flag = AnomalyFlag.objects.get(
+                id=flag_id,
+                transaction__meal_account__student__school=request.user.school)
         except AnomalyFlag.DoesNotExist:
             return Response({'error': 'Flag not found.'},
                             status=status.HTTP_404_NOT_FOUND)

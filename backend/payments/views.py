@@ -218,6 +218,22 @@ class PaymentStatusView(APIView):
             return Response({'error': 'Transaction not found.'},
                             status=status.HTTP_404_NOT_FOUND)
 
+        # Only the student themselves, their guardians, or staff of the same
+        # school may see a payment. Anyone else gets the same 404 as a
+        # non-existent id, so ids can't be probed.
+        user = request.user
+        account = tx.meal_account
+        allowed = (
+            (user.role == 'student' and account.student_id == user.id) or
+            (user.role == 'parent' and
+             account.guardians.filter(id=user.id).exists()) or
+            (user.role in ('admin', 'bursar') and
+             account.student.school_id == user.school_id)
+        )
+        if not allowed:
+            return Response({'error': 'Transaction not found.'},
+                            status=status.HTTP_404_NOT_FOUND)
+
         return Response({
             'transaction_id': tx.id,
             'status': tx.status,
