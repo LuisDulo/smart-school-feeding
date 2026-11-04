@@ -43,5 +43,16 @@ class TestModelComparisonAccess(TestCase):
         self.assertIn('default_model', body)
         self.assertIn('comparison', body)
 
+    def test_response_includes_both_anomaly_models(self):
+        body = self._get('mcsuper@test.com').json()
+        names = [m['name'] for m in body['anomaly_comparison']['models']]
+        self.assertEqual(names, ['Isolation Forest', 'Local Outlier Factor'])
+        for m in body['anomaly_comparison']['models']:
+            for key in ('precision', 'recall', 'f1', 'auc_roc'):
+                self.assertIn(key, m)
+        self.assertTrue(body['models_loaded']['local_outlier_factor'])
+        # non-ASCII characters in the JSON must survive intact (UTF-8 read)
+        self.assertNotIn('â€', ''.join(m['type'] for m in body['anomaly_comparison']['models']))
+
     def test_anonymous_is_rejected(self):
         self.assertEqual(self.client.get('/api/forecast/models/').status_code, 401)

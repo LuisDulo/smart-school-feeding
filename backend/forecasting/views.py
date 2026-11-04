@@ -68,7 +68,7 @@ MODELS = {
 DEFAULT_MODEL_KEY = 'linear_regression'
 _SHORT_TO_KEY = {'LR': 'linear_regression', 'RF': 'random_forest', 'XGB': 'xgboost'}
 try:
-    with open(os.path.join(ML_DIR, 'model_comparison.json')) as f:
+    with open(os.path.join(ML_DIR, 'model_comparison.json'), encoding='utf-8') as f:
         _comparison = json.load(f)
     _best_short = next(
         m['short'] for m in _comparison['models']
@@ -81,7 +81,7 @@ except Exception:
 
 def _comparison_models():
     try:
-        with open(os.path.join(ML_DIR, 'model_comparison.json')) as f:
+        with open(os.path.join(ML_DIR, 'model_comparison.json'), encoding='utf-8') as f:
             return json.load(f).get('models', [])
     except Exception:
         return []
@@ -290,7 +290,7 @@ class ActiveForecastModelView(APIView):
 class ModelComparisonView(APIView):
     """
     Side-by-side metrics for all forecasting models plus the balance
-    risk classifier, for the ML Model Comparison page of the super admin
+    risk classifier and the anomaly-detection models, for the ML Model Comparison page of the super admin
     dashboard (platform operator only).
     GET /api/forecast/models/
     """
@@ -303,6 +303,10 @@ class ModelComparisonView(APIView):
                 'random_forest': RF_LOADED,
                 'xgboost': XGB_LOADED,
                 'balance_risk_classifier': RISK_LOADED,
+                'isolation_forest': os.path.exists(
+                    os.path.join(ML_DIR, 'isolation_forest.joblib')),
+                'local_outlier_factor': os.path.exists(
+                    os.path.join(ML_DIR, 'local_outlier_factor.joblib')),
             },
             'default_model': DEFAULT_MODEL_KEY,
         }
@@ -312,10 +316,11 @@ class ModelComparisonView(APIView):
             ('random_forest_metrics', 'rf_metrics.json'),
             ('xgboost_metrics', 'xgb_metrics.json'),
             ('risk_classifier_metrics', 'risk_classifier_metrics.json'),
+            ('anomaly_comparison', 'anomaly_model_comparison.json'),
         ]:
             path = os.path.join(ML_DIR, filename)
             if os.path.exists(path):
-                with open(path) as f:
+                with open(path, encoding='utf-8') as f:
                     data[key] = json.load(f)
 
         return Response(data)

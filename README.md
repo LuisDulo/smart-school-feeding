@@ -58,7 +58,7 @@ Safaricom must reach `POST /api/payments/callback/` over public HTTPS. For local
 
 ### Machine-learning models
 
-Trained models are committed in `ml/models/`. To retrain, run the scripts from inside `ml/`, for example `python train_xgboost.py` and `python compare_models.py`.
+Trained models are committed in `ml/models/`. To retrain, run the scripts from inside `ml/`, for example `python train_xgboost.py` and `python compare_models.py` for the forecasting models. For anomaly detection run `python train_isolation_forest.py`, `python train_local_outlier_factor.py` and then `python compare_anomaly_models.py`, which writes the comparison shown on the super admin Model Comparison page.
 
 ## Running the tests
 
