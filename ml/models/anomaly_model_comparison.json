@@ -1,0 +1,57 @@
+{
+  "best_model": "Local Outlier Factor",
+  "deployed_model": "Isolation Forest",
+  "selection_metric": "F1-score (ties broken by AUC-ROC)",
+  "dataset": {
+    "transactions": 998,
+    "known_anomalies": 17,
+    "anomaly_rate_pct": 1.7,
+    "train_rows": 698,
+    "test_rows": 300,
+    "test_anomalies": 5,
+    "features": [
+      "amount_cents",
+      "hour_of_day",
+      "day_of_week",
+      "tx_count_today",
+      "tx_count_week",
+      "amount_deviation",
+      "days_since_last_tx"
+    ],
+    "contamination": 0.0222
+  },
+  "evaluation_note": "Both models are fit without labels on the same 70% of transactions and scored on the same held-out 30%; the synthetic anomaly label is used only for these metrics.",
+  "caution": "Only 5 labelled anomalies are in the held-out set, so a difference of a single transaction moves precision and recall noticeably. Treat the ranking as indicative, not conclusive.",
+  "models": [
+    {
+      "name": "Isolation Forest",
+      "short": "IF",
+      "type": "Tree ensemble — isolates points with random splits",
+      "precision": 0.8,
+      "recall": 0.8,
+      "f1": 0.8,
+      "auc_roc": 0.9946,
+      "true_positives": 4,
+      "false_positives": 1,
+      "false_negatives": 1,
+      "true_negatives": 294,
+      "flagged": 5,
+      "deployed": true
+    },
+    {
+      "name": "Local Outlier Factor",
+      "short": "LOF",
+      "type": "Density-based — compares local density with neighbours",
+      "precision": 0.7143,
+      "recall": 1.0,
+      "f1": 0.8333,
+      "auc_roc": 1.0,
+      "true_positives": 5,
+      "false_positives": 2,
+      "false_negatives": 0,
+      "true_negatives": 293,
+      "flagged": 7,
+      "deployed": false
+    }
+  ]
+}

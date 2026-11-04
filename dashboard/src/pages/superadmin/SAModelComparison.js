@@ -28,6 +28,15 @@ export default function SAModelComparison() {
   const rfMetrics = data?.random_forest_metrics;
   const xgbMetrics = data?.xgboost_metrics;
   const riskMetrics = data?.risk_classifier_metrics;
+  const anomaly = data?.anomaly_comparison;
+  const anomalyModels = anomaly?.models || [];
+  const bestAnomalyF1 = anomalyModels.length
+    ? Math.max(...anomalyModels.map(m => m.f1)) : null;
+  const anomalyChart = ['precision', 'recall', 'f1', 'auc_roc'].map(metric => ({
+    metric: { precision: 'Precision', recall: 'Recall', f1: 'F1-score', auc_roc: 'AUC-ROC' }[metric],
+    ...Object.fromEntries(anomalyModels.map(m => [m.name, m[metric]])),
+  }));
+  const ANOMALY_COLORS = ['#1A6E3C', '#3A4AB0'];
   const winner = comparison?.best_model;
 
   const barData = models.map(m => ({
@@ -67,8 +76,8 @@ export default function SAModelComparison() {
       <div style={styles.topbar}>
         <h1 style={styles.title}>ML Model Comparison</h1>
         <p style={styles.subtitle}>
-          Forecasting models and the balance-risk classifier, evaluated on
-          the same data. The best forecasting model is used automatically.
+          Forecasting models, anomaly-detection models and the balance-risk
+          classifier, each evaluated on the same data.
         </p>
       </div>
       <div style={styles.content}>
@@ -189,6 +198,91 @@ export default function SAModelComparison() {
         {featureBar('Feature Importance — Random Forest',
           rfMetrics?.feature_importances, '#1A6E3C')}
 
+        {anomalyModels.length > 0 && (
+          <div style={styles.card}>
+            <h3 style={styles.cardTitle}>
+              Anomaly Detection Model Evaluation — Held-out Test Results
+              {anomaly?.best_model && (
+                <span style={styles.classifierBadge}>
+                  Best on this data: {anomaly.best_model}
+                </span>
+              )}
+            </h3>
+            <p style={styles.cardNote}>
+              {anomaly?.evaluation_note}{' '}
+              {anomaly?.deployed_model &&
+                `The deployed detector is currently ${anomaly.deployed_model}.`}
+            </p>
+            <table style={styles.table}>
+              <thead>
+                <tr style={styles.thead}>
+                  {['Model', 'Approach', 'Precision', 'Recall', 'F1-score',
+                    'AUC-ROC', 'Caught / Missed / False alarms', 'Status'].map(h => (
+                    <th key={h} style={styles.th}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {anomalyModels.map((m, i) => {
+                  const isBest = m.f1 === bestAnomalyF1;
+                  return (
+                    <tr key={m.name} style={{
+                      ...(i % 2 === 0 ? {} : { background: '#F9FAFB' }),
+                      ...(isBest ? { outline: '2px solid #1A6E3C', outlineOffset: -2 } : {})
+                    }}>
+                      <td style={{ ...styles.td, fontWeight: 700, color: '#1A3A5C' }}>
+                        {isBest && <FiAward style={styles.inlineTrophy} />}
+                        {m.name}
+                      </td>
+                      <td style={{ ...styles.td, fontSize: 11, color: '#6B7280' }}>{m.type}</td>
+                      <td style={styles.td}>{m.precision}</td>
+                      <td style={styles.td}>{m.recall}</td>
+                      <td style={{ ...styles.td, fontWeight: 700,
+                        color: isBest ? '#1A6E3C' : '#374151' }}>{m.f1}</td>
+                      <td style={styles.td}>{m.auc_roc}</td>
+                      <td style={{ ...styles.td, color: '#6B7280' }}>
+                        {m.true_positives} / {m.false_negatives} / {m.false_positives}
+                      </td>
+                      <td style={styles.td}>
+                        {m.deployed
+                          ? <span style={styles.deployedBadge}>Deployed</span>
+                          : <span style={styles.candidateBadge}>Candidate</span>}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+
+            <div style={{ marginTop: 20 }}>
+              <ResponsiveContainer width="100%" height={240}>
+                <BarChart data={anomalyChart}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
+                  <XAxis dataKey="metric" tick={{ fontSize: 12 }} />
+                  <YAxis domain={[0, 1]} tick={{ fontSize: 11 }} />
+                  <Tooltip />
+                  <Legend />
+                  {anomalyModels.map((m, i) => (
+                    <Bar key={m.name} dataKey={m.name}
+                         fill={ANOMALY_COLORS[i % ANOMALY_COLORS.length]}
+                         radius={[4, 4, 0, 0]} />
+                  ))}
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {anomaly?.dataset && (
+              <p style={{ ...styles.cardNote, marginTop: 12, marginBottom: 0 }}>
+                Dataset: {anomaly.dataset.transactions} transactions,{' '}
+                {anomaly.dataset.known_anomalies} known anomalies
+                ({anomaly.dataset.anomaly_rate_pct}%); held-out set of{' '}
+                {anomaly.dataset.test_rows} transactions containing{' '}
+                {anomaly.dataset.test_anomalies} anomalies. {anomaly.caution}
+              </p>
+            )}
+          </div>
+        )}
+
         {riskMetrics && (
           <div style={styles.card}>
             <h3 style={styles.cardTitle}>
@@ -266,6 +360,10 @@ const styles = {
   chartCard: { background: '#fff', borderRadius: 12, padding: 24,
                boxShadow: '0 2px 8px rgba(0,0,0,0.04)' },
   chartTitle: { margin: '0 0 16px', fontSize: 14, fontWeight: 700, color: '#1A3A5C' },
+  deployedBadge: { background: '#D1FAE5', color: '#1A6E3C', fontSize: 11,
+                   fontWeight: 700, padding: '3px 10px', borderRadius: 12 },
+  candidateBadge: { background: '#F3F4F6', color: '#6B7280', fontSize: 11,
+                    fontWeight: 700, padding: '3px 10px', borderRadius: 12 },
   classifierBadge: { background: '#EEF0FB', color: '#3A4AB0', fontSize: 11,
                      fontWeight: 600, padding: '4px 12px', borderRadius: 20 },
   classifierGrid: { display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)',
