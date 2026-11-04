@@ -4,72 +4,21 @@ import {
   Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
 import {
-  FiAward, FiCheckCircle, FiXCircle, FiSettings
+  FiAward, FiCheckCircle, FiXCircle
 } from 'react-icons/fi';
 import Topbar from '../components/Topbar';
 import { forecastAPI } from '../services/api';
-import { latestForecastBatch } from '../utils/forecastUtils';
-
-const MODEL_OPTIONS = [
-  { key: 'linear_regression', label: 'Linear Regression' },
-  { key: 'random_forest', label: 'Random Forest' },
-  { key: 'xgboost', label: 'XGBoost' },
-];
-
-const HORIZON_OPTIONS = [
-  { key: 'five_day', label: '5-Day' },
-  { key: 'month', label: 'Month' },
-];
 
 export default function ModelComparison() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [generating, setGenerating] = useState(false);
-  const [selectedModel, setSelectedModel] = useState('xgboost');
-  const [selectedHorizon, setSelectedHorizon] = useState('five_day');
-  const [genMsg, setGenMsg] = useState('');
-  const [forecasts, setForecasts] = useState([]);
-  const [lastModelUsed, setLastModelUsed] = useState('');
 
   useEffect(() => {
     forecastAPI.models()
-      .then(r => {
-        setData(r.data);
-        if (r.data?.default_model) setSelectedModel(r.data.default_model);
-      })
+      .then(r => setData(r.data))
       .catch(console.error)
       .finally(() => setLoading(false));
-    // /forecast/history/ returns every forecast ever generated for this
-    // school — only show the most recent single Generate batch by
-    // default, or the table reads as a mix of unrelated runs.
-    forecastAPI.history()
-      .then(r => setForecasts(latestForecastBatch(r.data)))
-      .catch(() => {});
   }, []);
-
-  const handleGenerate = async () => {
-    setGenerating(true);
-    setGenMsg('');
-    try {
-      const res = await forecastAPI.generate(selectedModel, selectedHorizon);
-      setGenMsg(
-        `Forecast generated using ${res.data.model_used}. ` +
-        `${res.data.forecasts.length} day(s) predicted.`);
-      setLastModelUsed(res.data.model_used);
-      // Show exactly the just-generated batch, not merged with whatever
-      // was on screen before — a 5-day forecast run right after a Rest
-      // of Term run would otherwise get buried under months of older,
-      // far-future dates instead of replacing them.
-      setForecasts(
-        [...res.data.forecasts].sort((a, b) =>
-          new Date(a.forecast_date) - new Date(b.forecast_date))
-      );
-    } catch (e) {
-      setGenMsg(e.response?.data?.error || 'Generation failed. Ensure the model is trained.');
-    } finally {
-      setGenerating(false);
-    }
-  };
 
   if (loading) {
     return <div style={styles.loading}>Loading model comparison data...</div>;
@@ -268,106 +217,6 @@ export default function ModelComparison() {
             </div>
           </div>
         )}
-
-        <div style={styles.card}>
-          <h3 style={styles.cardTitle}>Generate Forecast — Select Model</h3>
-          <p style={styles.cardNote}>
-            Choose which model produces the demand forecast.
-            {winner && ` ${winner} currently has the lowest MAE.`}
-          </p>
-          <div style={styles.selectorRow}>
-            {MODEL_OPTIONS.map(({ key, label }) => (
-              <button
-                key={key}
-                style={{
-                  ...styles.modelBtn,
-                  ...(selectedModel === key ? styles.modelBtnActive : {})
-                }}
-                onClick={() => setSelectedModel(key)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-
-          <p style={styles.cardNote}>Choose the forecast range.</p>
-          <div style={styles.selectorRow}>
-            {HORIZON_OPTIONS.map(({ key, label }) => (
-              <button
-                key={key}
-                style={{
-                  ...styles.modelBtn,
-                  ...(selectedHorizon === key ? styles.modelBtnActive : {})
-                }}
-                onClick={() => setSelectedHorizon(key)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-
-          <button
-            style={{ ...styles.generateBtn, ...(generating ? { opacity: 0.6 } : {}) }}
-            onClick={handleGenerate}
-            disabled={generating}
-          >
-            <FiSettings style={styles.btnIcon} />
-            {generating
-              ? 'Generating...'
-              : `Generate ${HORIZON_OPTIONS.find(h => h.key === selectedHorizon)?.label} · ${selectedModel.replace(/_/g, ' ')}`}
-          </button>
-          {genMsg && (
-            <p style={{
-              marginTop: 12, fontSize: 13,
-              color: genMsg.startsWith('Forecast') ? '#1A6E3C' : '#C0392B'
-            }}>
-              {genMsg}
-            </p>
-          )}
-        </div>
-
-        <div style={styles.tableCard}>
-          <h3 style={{ ...styles.chartTitle, padding: '20px 24px 0' }}>
-            Forecast Detail{lastModelUsed && ` — ${lastModelUsed}`}
-          </h3>
-          <table style={styles.table}>
-            <thead>
-              <tr style={styles.thead}>
-                {['Forecast Date', 'Predicted Meals',
-                  'Estimated Cost (KES)', 'Generated At'].map(h => (
-                  <th key={h} style={styles.th}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {forecasts.length === 0 ? (
-                <tr>
-                  <td colSpan={4} style={styles.emptyCell}>
-                    No forecasts generated yet. Pick a model above and click Generate.
-                  </td>
-                </tr>
-              ) : forecasts.slice().reverse().map((f, i) => (
-                <tr key={f.id} style={i % 2 === 0 ? {} : { background: '#F9FAFB' }}>
-                  <td style={styles.td}>
-                    {new Date(f.forecast_date).toLocaleDateString(
-                      'en-KE', { weekday: 'short', day: 'numeric',
-                                 month: 'short', year: 'numeric' })}
-                  </td>
-                  <td style={{ ...styles.td, fontWeight: 700, color: '#1A6E3C' }}>
-                    {f.predicted_meals}
-                  </td>
-                  <td style={{ ...styles.td, fontWeight: 700, color: '#1A3A5C' }}>
-                    {f.predicted_cost_ksh?.toLocaleString('en-KE',
-                      { minimumFractionDigits: 2 })}
-                  </td>
-                  <td style={{ ...styles.td, color: '#9CA3AF', fontSize: 11 }}>
-                    {new Date(f.generated_at).toLocaleString('en-KE')}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
       </div>
     </div>
   );

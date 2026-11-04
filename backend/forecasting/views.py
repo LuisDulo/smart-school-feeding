@@ -79,6 +79,14 @@ try:
 except Exception:
     pass
 
+def _comparison_models():
+    try:
+        with open(os.path.join(ML_DIR, 'model_comparison.json')) as f:
+            return json.load(f).get('models', [])
+    except Exception:
+        return []
+
+
 logger.info(f"Forecasting models loaded — LR:{LR_LOADED} RF:{RF_LOADED} "
             f"XGB:{XGB_LOADED} Risk:{RISK_LOADED} — default:{DEFAULT_MODEL_KEY}")
 
@@ -129,19 +137,16 @@ class GenerateForecastView(APIView):
     """
     Generate a demand forecast.
     POST /api/forecast/generate/
-    Body: { "model": "linear_regression" | "random_forest" | "xgboost",
-            "horizon": "five_day" | "month" }
-    Omitting "model" uses whichever model compare_models.py found best.
-    Omitting "horizon" defaults to "five_day".
+    Body: { "horizon": "five_day" | "month" }
+    The model is never chosen by the caller: the system always uses
+    whichever forecasting model compare_models.py found to have the lowest
+    test-set MAE (DEFAULT_MODEL_KEY). Any "model" value in the body is
+    ignored. Omitting "horizon" defaults to "five_day".
     """
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        model_key = request.data.get('model', DEFAULT_MODEL_KEY)
-        if model_key not in MODELS:
-            return Response(
-                {'error': f'Unknown model. Choose from: {list(MODELS.keys())}'},
-                status=status.HTTP_400_BAD_REQUEST)
+        model_key = DEFAULT_MODEL_KEY
 
         horizon = request.data.get('horizon', 'five_day')
         if horizon not in HORIZONS:
@@ -257,6 +262,29 @@ class ForecastHistoryView(APIView):
         ).order_by('forecast_date')
         return Response(
             DemandForecastSerializer(forecasts, many=True).data)
+
+
+class ActiveForecastModelView(APIView):
+    """
+    The forecasting model the system currently uses (the best one according
+    to the model comparison), so the UI can show it without offering a choice.
+    GET /api/forecast/active-model/
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        info = MODELS[DEFAULT_MODEL_KEY]
+        mae = None
+        for m in _comparison_models():
+            if _SHORT_TO_KEY.get(m.get('short')) == DEFAULT_MODEL_KEY:
+                mae = m.get('mae')
+        return Response({
+            'key': DEFAULT_MODEL_KEY,
+            'name': info['name'],
+            'type': info['type'],
+            'test_mae': mae,
+            'selection_rule': 'Lowest test-set MAE in the model comparison',
+        })
 
 
 class ModelComparisonView(APIView):

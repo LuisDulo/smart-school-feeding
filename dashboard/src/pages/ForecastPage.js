@@ -8,12 +8,6 @@ import Topbar from '../components/Topbar';
 import { forecastAPI } from '../services/api';
 import { latestForecastBatch } from '../utils/forecastUtils';
 
-const MODEL_OPTIONS = [
-  { key: 'linear_regression', label: 'Linear Regression' },
-  { key: 'random_forest', label: 'Random Forest' },
-  { key: 'xgboost', label: 'XGBoost' },
-];
-
 const HORIZON_OPTIONS = [
   { key: 'five_day', label: '5-Day' },
   { key: 'month', label: 'Month' },
@@ -24,7 +18,7 @@ export default function ForecastPage() {
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [modelInfo, setModelInfo] = useState(null);
-  const [selectedModel, setSelectedModel] = useState('xgboost');
+  const [activeModel, setActiveModel] = useState(null);
   const [selectedHorizon, setSelectedHorizon] = useState('five_day');
 
   useEffect(() => {
@@ -36,17 +30,15 @@ export default function ForecastPage() {
     forecastAPI.history()
       .then(res => setForecasts(latestForecastBatch(res.data)))
       .finally(() => setLoading(false));
-    forecastAPI.models()
-      .then(res => {
-        if (res.data?.default_model) setSelectedModel(res.data.default_model);
-      })
+    forecastAPI.activeModel()
+      .then(res => setActiveModel(res.data))
       .catch(() => {});
   }, []);
 
   const handleGenerate = async () => {
     setGenerating(true);
     try {
-      const res = await forecastAPI.generate(selectedModel, selectedHorizon);
+      const res = await forecastAPI.generate(selectedHorizon);
       // Show exactly the just-generated batch, not merged with whatever
       // was on screen before — a 5-day forecast run right after a Rest
       // of Term run would otherwise get buried under months of older,
@@ -82,13 +74,13 @@ export default function ForecastPage() {
     <div style={styles.page}>
       <Topbar
         title="Demand Forecast"
-        subtitle="Linear Regression · Random Forest · XGBoost — scikit-learn"
+        subtitle="Forecast model chosen automatically from the model comparison"
       />
       <div style={styles.content}>
         <div style={styles.headerRow}>
           <p style={styles.modelBadge}>
             <FiBarChart2 style={styles.badgeIcon} />
-            {MODEL_OPTIONS.find(m => m.key === selectedModel)?.label}
+            {activeModel?.name || 'Best available model'}
             {' '}· 6 features ·{' '}
             {HORIZON_OPTIONS.find(h => h.key === selectedHorizon)?.label} forecast
           </p>
@@ -101,21 +93,14 @@ export default function ForecastPage() {
         </div>
 
         <div style={styles.card}>
-          <h3 style={styles.chartTitle}>Select Model</h3>
-          <div style={styles.selectorRow}>
-            {MODEL_OPTIONS.map(({ key, label }) => (
-              <button
-                key={key}
-                style={{
-                  ...styles.modelBtn,
-                  ...(selectedModel === key ? styles.modelBtnActive : {})
-                }}
-                onClick={() => setSelectedModel(key)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
+          <h3 style={styles.chartTitle}>Forecasting Model</h3>
+          <p style={styles.autoModelNote}>
+            <strong>{activeModel?.name || 'Loading...'}</strong>
+            {activeModel?.test_mae != null &&
+              ` — test MAE ${activeModel.test_mae} meals`}
+            . Selected automatically as the best-performing model in the
+            model comparison.
+          </p>
 
           <h3 style={styles.chartTitle}>Forecast Range</h3>
           <div style={styles.selectorRow}>
@@ -141,7 +126,7 @@ export default function ForecastPage() {
             <FiSettings style={styles.btnIcon} />
             {generating
               ? 'Generating...'
-              : `Generate ${HORIZON_OPTIONS.find(h => h.key === selectedHorizon)?.label} Forecast · ${MODEL_OPTIONS.find(m => m.key === selectedModel)?.label}`}
+              : `Generate ${HORIZON_OPTIONS.find(h => h.key === selectedHorizon)?.label} Forecast`}
           </button>
         </div>
 
@@ -244,6 +229,9 @@ const styles = {
   modelDetail: { color: '#6B7280', fontSize: 12, margin: '6px 0 0' },
   card: { background: '#fff', borderRadius: 12, padding: 24, marginBottom: 24,
           boxShadow: '0 2px 8px rgba(0,0,0,0.04)' },
+  autoModelNote: { margin: '0 0 16px', fontSize: 13, color: '#374151',
+                   background: '#F0FAF4', border: '1px solid #CDEBD8',
+                   borderRadius: 8, padding: '10px 14px' },
   selectorRow: { display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 },
   modelBtn: { border: '1px solid #E5E7EB', borderRadius: 8, padding: '8px 16px',
               fontSize: 12, fontWeight: 600, cursor: 'pointer',
