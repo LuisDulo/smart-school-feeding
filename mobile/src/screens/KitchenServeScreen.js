@@ -166,7 +166,11 @@ export default function KitchenServeScreen() {
           {item.already_served_today && (
             <View style={styles.badgeRow}>
               <Feather name="check-circle" size={12} color="#1A6E3C" />
-              <Text style={styles.badgeServed}>Already served today</Text>
+              <Text style={styles.badgeServed}>
+                {disabled
+                  ? `Daily limit reached (${item.meals_today}/${item.daily_limit})`
+                  : `Served ${item.meals_today}${item.daily_limit ? ` of ${item.daily_limit}` : ''} today`}
+              </Text>
             </View>
           )}
         </View>
@@ -176,7 +180,7 @@ export default function KitchenServeScreen() {
           disabled={disabled}
         >
           <Text style={styles.serveBtnText}>
-            {item.already_served_today ? 'Served' : 'Serve'}
+            {disabled ? 'Served' : item.already_served_today ? 'Serve again' : 'Serve'}
           </Text>
         </TouchableOpacity>
       </View>

@@ -15,7 +15,7 @@ const NAV = [
   { key: 'staff',      label: 'Staff Management',  Icon: FiUser },
   { key: 'anomalies',  label: 'Anomaly Flags',     Icon: FiAlertTriangle },
   { key: 'schoolReports', label: 'School Reports', Icon: FiInbox },
-  { key: 'reports',    label: 'Network Reports',   Icon: FiClipboard },
+  { key: 'reports',    label: 'Multischool Reports', Icon: FiClipboard },
 ];
 
 export default function SuperAdminSidebar({

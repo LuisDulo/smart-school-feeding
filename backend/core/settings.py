@@ -179,3 +179,15 @@ CORS_ALLOWED_ORIGINS = [
     if origin.strip()
 ]
 CORS_ALLOW_ALL_ORIGINS = DEBUG
+
+# ---------------------------------------------------------------------------
+# Meals
+# ---------------------------------------------------------------------------
+
+# How many meals one student may be served per day (e.g. breakfast and lunch).
+# Set to 0 for no limit. The cap still guards against a double scan by mistake.
+try:
+    MAX_MEALS_PER_STUDENT_PER_DAY = max(
+        0, int(os.getenv('MAX_MEALS_PER_STUDENT_PER_DAY', '2')))
+except ValueError:
+    MAX_MEALS_PER_STUDENT_PER_DAY = 2

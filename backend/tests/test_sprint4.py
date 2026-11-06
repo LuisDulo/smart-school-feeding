@@ -1,4 +1,4 @@
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from meals.models import School, User, MealAccount, MealDistributionEvent, MenuItem
 from datetime import date
 import bcrypt
@@ -43,20 +43,47 @@ class TestMealDistribution(TestCase):
         self.meal_account.refresh_from_db()
         self.assertEqual(self.meal_account.balance_cents, 95000)
 
-    def test_cannot_serve_meal_twice_same_day(self):
-        self.client.post(
+    def _serve(self):
+        return self.client.post(
             '/api/meals/serve/',
             {'student_id': self.student.id, 'item_ids': [self.meal_item.id]},
             content_type='application/json',
             HTTP_AUTHORIZATION=f'Bearer {self.token}'
         )
-        response = self.client.post(
-            '/api/meals/serve/',
-            {'student_id': self.student.id, 'item_ids': [self.meal_item.id]},
-            content_type='application/json',
-            HTTP_AUTHORIZATION=f'Bearer {self.token}'
-        )
-        self.assertEqual(response.status_code, 409)
+
+    def test_can_serve_meal_twice_same_day_but_not_a_third_time(self):
+        self.assertEqual(self._serve().status_code, 201)
+        second = self._serve()
+        self.assertEqual(second.status_code, 201)
+        self.assertEqual(second.json()['meals_today'], 2)
+        third = self._serve()
+        self.assertEqual(third.status_code, 409)
+        self.assertEqual(third.json()['daily_limit'], 2)
+        self.meal_account.refresh_from_db()
+        self.assertEqual(self.meal_account.balance_cents, 90000)  # only two charged
+
+    @override_settings(MAX_MEALS_PER_STUDENT_PER_DAY=0)
+    def test_daily_limit_zero_means_unlimited(self):
+        for _ in range(4):
+            self.assertEqual(self._serve().status_code, 201)
+
+    @override_settings(MAX_MEALS_PER_STUDENT_PER_DAY=1)
+    def test_daily_limit_can_be_set_back_to_one(self):
+        self.assertEqual(self._serve().status_code, 201)
+        self.assertEqual(self._serve().status_code, 409)
+
+    def test_lookup_stays_eligible_until_the_limit_is_reached(self):
+        url = f'/api/meals/lookup/?id={self.student.id}'
+        auth = {'HTTP_AUTHORIZATION': f'Bearer {self.token}'}
+        self._serve()
+        one = self.client.get(url, **auth).json()['students'][0]
+        self.assertTrue(one['eligible'])
+        self.assertTrue(one['already_served_today'])
+        self.assertEqual((one['meals_today'], one['daily_limit']), (1, 2))
+        self._serve()
+        two = self.client.get(url, **auth).json()['students'][0]
+        self.assertFalse(two['eligible'])
+        self.assertEqual(two['meals_today'], 2)
 
     def test_insufficient_balance_rejected(self):
         self.meal_account.balance_cents = 1000
