@@ -30,6 +30,8 @@ export const authAPI = {
   profile: () => api.get('/auth/profile/'),
   logout: (refresh) => api.post('/auth/logout/', { refresh }),
   getSchools: () => api.get('/auth/schools/'),
+  registerPushToken: (token, platform) => api.post('/auth/push-token/', { token, platform }),
+  removePushToken: (token) => api.delete('/auth/push-token/', { data: { token } }),
 };
 
 export const paymentsAPI = {

@@ -52,6 +52,29 @@ npm install
 npx expo start
 ```
 
+### Phone push notifications (Android)
+
+Parents get a phone notification when their child collects a meal, when a top-up is confirmed or fails, and as a low-balance payment reminder. They can also set a weekly top-up reminder on the phone from Reminder Settings. The backend sends the messages through Expo's push service, which delivers them through Firebase Cloud Messaging.
+
+Remote push does not work in Expo Go on Android (SDK 53 and later), so the app has to be installed as an Expo **development build**. One-time setup:
+
+1. Install the EAS CLI and sign in with a free Expo account: `npm install -g eas-cli`, then `eas login`.
+2. In the [Firebase console](https://console.firebase.google.com) create a project and add an **Android app** with the package name `com.luisdulo.smartschoolfeeding` (set in `mobile/app.json`). Download `google-services.json` and put it in `mobile/`.
+3. In Firebase go to Project settings, Service accounts, and generate a new private key. Upload that key to Expo with `eas credentials` (Android, then Google Service Account Key for Push Notifications, FCM V1). Never commit this key; the repo ignores common names for it.
+4. From `mobile/` run `eas init` to link the project, then build the app: `eas build --platform android --profile development`. Install the APK it produces on the phone.
+5. Start Metro with `npx expo start` and open the installed app. It asks for notification permission after login.
+
+Check delivery with the **Expo push notifications tool** at `expo.dev/notifications`, or serve a meal from the dashboard.
+
+Low-balance reminders are sent by a command, which skips weekends and sends at most one reminder per account per day. Run it every weekday morning with Windows Task Scheduler or cron:
+
+```bash
+cd backend
+python manage.py send_payment_reminders
+```
+
+Use `--dry-run` to list who would be reminded and `--force` to run on a weekend. Set `PUSH_ENABLED=False` in `backend/.env` to switch all push sending off.
+
 ### M-Pesa callback
 
 Safaricom must reach `POST /api/payments/callback/` over public HTTPS. For local development run `ngrok http 8000`, then put the forwarding URL in `DARAJA_CALLBACK_URL` and its host in `ALLOWED_HOSTS` in `backend/.env`, and restart the backend.

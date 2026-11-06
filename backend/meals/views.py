@@ -6,6 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.conf import settings
 from django.db import transaction as db_transaction
 from django.core.exceptions import ValidationError
+from .push import notify_account, ksh
 from .models import (MealDistributionEvent, MealAccount,
                       User, PaymentTransaction, MenuItem, MealCombo)
 from rest_framework import serializers
@@ -373,6 +374,14 @@ class RecordMealView(APIView):
             event.items.set(items)
             meal_account.balance_cents -= total_cents
             meal_account.save()
+
+        notify_account(
+            meal_account,
+            title=f'{student.full_name} collected a meal',
+            body=(f"{', '.join(i.name for i in items)} · "
+                  f"{ksh(total_cents)} deducted. "
+                  f"Balance: {ksh(meal_account.balance_cents)}"),
+            data={'type': 'meal', 'event_id': event.id})
 
         return Response({
             'message': f'Meal recorded for {student.full_name}.',
