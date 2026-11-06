@@ -30,6 +30,7 @@ export default function SAModelComparison() {
   const riskMetrics = data?.risk_classifier_metrics;
   const anomaly = data?.anomaly_comparison;
   const anomalyModels = anomaly?.models || [];
+  const mealAnomaly = data?.meal_anomaly_evaluation;
   const bestAnomalyF1 = anomalyModels.length
     ? Math.max(...anomalyModels.map(m => m.f1)) : null;
   const anomalyChart = ['precision', 'recall', 'f1', 'auc_roc'].map(metric => ({
@@ -280,6 +281,54 @@ export default function SAModelComparison() {
                 {anomaly.dataset.test_anomalies} anomalies. {anomaly.caution}
               </p>
             )}
+          </div>
+        )}
+
+        {mealAnomaly && (
+          <div style={styles.card}>
+            <h3 style={styles.cardTitle}>
+              Meal-Serving Anomaly Detector
+              <span style={styles.classifierBadge}>
+                Isolation Forest + rules
+              </span>
+            </h3>
+            <p style={styles.cardNote}>
+              Scores every served meal on cost, hour, weekday, meals that day and
+              how far the cost is from the student's usual, and applies explainable
+              rules (outside serving hours, non-school days, a meal far costlier than
+              usual). Repeated attempts to serve past the daily limit are flagged too.
+            </p>
+            <table style={styles.table}>
+              <thead>
+                <tr style={styles.thead}>
+                  {['Detector', 'Precision', 'Recall', 'F1', 'Night', 'Weekend', 'Costly meal', 'Normal meals flagged'].map(h => (
+                    <th key={h} style={styles.th}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  ['Model alone', mealAnomaly.metrics?.model_alone],
+                  ['Model + rules (deployed)', mealAnomaly.metrics?.model_plus_rules],
+                ].map(([label, m], i) => m && (
+                  <tr key={label} style={{ background: i % 2 === 0 ? '#fff' : '#F9FAFB' }}>
+                    <td style={{ ...styles.td, fontWeight: 600 }}>{label}</td>
+                    <td style={styles.td}>{m.precision}</td>
+                    <td style={styles.td}>{m.recall}</td>
+                    <td style={styles.td}>{m.f1}</td>
+                    <td style={styles.td}>{m.recall_by_type?.night}</td>
+                    <td style={styles.td}>{m.recall_by_type?.weekend}</td>
+                    <td style={styles.td}>{m.recall_by_type?.cost}</td>
+                    <td style={styles.td}>{m.real_meals_flagged_pct}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p style={{ ...styles.cardNote, marginTop: 12, marginBottom: 0 }}>
+              Evaluated on {mealAnomaly.dataset?.held_out_meals} held-out real meals plus{' '}
+              {mealAnomaly.dataset?.injected_anomalies} injected anomalies.{' '}
+              {mealAnomaly.caution}
+            </p>
           </div>
         )}
 

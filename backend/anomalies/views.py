@@ -9,9 +9,11 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
-from meals.models import (PaymentTransaction, AnomalyFlag,
+from meals.models import (PaymentTransaction, AnomalyFlag, MealAnomalyFlag,
                            User, MealAccount)
-from .serializers import AnomalyFlagSerializer, ReviewFlagSerializer
+from .serializers import (AnomalyFlagSerializer, ReviewFlagSerializer,
+                          MealAnomalyFlagSerializer)
+from . import meal_detection
 from core.permissions import IsAdminOrBursar
 
 logger = logging.getLogger(__name__)
@@ -79,6 +81,23 @@ def extract_features(tx):
         round(amount_deviation, 4),
         min(days_since, 90),
     ]])
+
+
+def score_and_flag_transaction(tx):
+    """Score a confirmed top-up and raise an AnomalyFlag if it looks unusual.
+
+    Returns (flag_or_None, anomaly_score), or (None, None) when the model is
+    not loaded. Shared by the M-Pesa callback and the demo generator."""
+    if not IF_MODEL_LOADED:
+        return None, None
+    scaled = if_scaler.transform(extract_features(tx))
+    raw_score = float(if_model.decision_function(scaled)[0])
+    anomaly_score = round(max(0, min(1, 1 - (raw_score + 0.5))), 4)
+    if int(if_model.predict(scaled)[0]) != -1:
+        return None, anomaly_score
+    flag, _ = AnomalyFlag.objects.get_or_create(
+        transaction=tx, defaults={'anomaly_score': anomaly_score})
+    return flag, anomaly_score
 
 
 class ScoreTransactionView(APIView):
@@ -308,4 +327,93 @@ class RunAnomalyDetectionView(APIView):
             'new_flags_created': flagged,
             'model': f'IsolationForest (n_estimators=100, '
                      f'contamination={contamination})'
+        })
+
+
+class MealFlagQueueView(APIView):
+    """
+    Meal-serving anomaly flags for the school.
+    GET /api/anomalies/meal-flags/
+    GET /api/anomalies/meal-flags/?reviewed=false|true
+    """
+    permission_classes = [IsAuthenticated, IsAdminOrBursar]
+    MAX_ROWS = 200
+
+    def get(self, request):
+        base = MealAnomalyFlag.objects.filter(school=request.user.school)
+        flags = base.select_related(
+            'meal_account__student', 'meal_event', 'recorded_by', 'reviewed_by'
+        ).prefetch_related('meal_event__items').order_by('-flagged_at')
+        reviewed_param = request.query_params.get('reviewed')
+        if reviewed_param == 'false':
+            flags = flags.filter(reviewed=False)
+        elif reviewed_param == 'true':
+            flags = flags.filter(reviewed=True)
+
+        return Response({
+            'total': flags.count(),
+            'pending': base.filter(reviewed=False).count(),
+            'high_severity': base.filter(anomaly_score__gte=0.80).count(),
+            'flags': MealAnomalyFlagSerializer(flags[:self.MAX_ROWS], many=True).data,
+        })
+
+
+class ReviewMealFlagView(APIView):
+    """
+    POST /api/anomalies/meal-flags/{flag_id}/review/
+    Body: { action: 'legitimate'|'confirmed_irregular', review_notes: str }
+    """
+    permission_classes = [IsAuthenticated, IsAdminOrBursar]
+
+    def post(self, request, flag_id):
+        try:
+            flag = MealAnomalyFlag.objects.get(
+                id=flag_id, school=request.user.school)
+        except MealAnomalyFlag.DoesNotExist:
+            return Response({'error': 'Flag not found.'},
+                            status=status.HTTP_404_NOT_FOUND)
+        if flag.reviewed:
+            return Response({'error': 'This flag has already been reviewed.'},
+                            status=status.HTTP_409_CONFLICT)
+        serializer = ReviewFlagSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        flag.reviewed = True
+        flag.reviewed_by = request.user
+        flag.review_notes = serializer.validated_data['review_notes']
+        flag.reviewed_at = timezone.now()
+        flag.save()
+        action = serializer.validated_data['action']
+        return Response({
+            'message': f'Flag marked as {action}.',
+            'flag_id': flag.id,
+            'action': action,
+            'reviewed_by': request.user.full_name,
+            'reviewed_at': str(flag.reviewed_at),
+        })
+
+
+class RunMealDetectionView(APIView):
+    """
+    Score the school's recent meals (default last 30 days) and flag unusual ones.
+    POST /api/anomalies/meal-flags/run/   Body: { days: 1-90 } (optional)
+    """
+    permission_classes = [IsAuthenticated, IsAdminOrBursar]
+
+    def post(self, request):
+        try:
+            days = int(request.data.get('days', 30))
+        except (TypeError, ValueError):
+            return Response({'error': 'days must be a whole number.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if not 1 <= days <= 90:
+            return Response({'error': 'days must be between 1 and 90.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        counts = meal_detection.scan_events(school=request.user.school, days=days)
+        return Response({
+            'message': 'Meal anomaly detection complete.',
+            'meals_scored': counts['scanned'],
+            'new_flags_created': counts['flagged'],
+            'days': days,
         })

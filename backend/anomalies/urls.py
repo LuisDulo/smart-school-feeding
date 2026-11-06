@@ -1,7 +1,8 @@
 from django.urls import path
 from .views import (ScoreTransactionView, AnomalyFlagQueueView,
                     ReviewFlagView, AnomalyStatsView,
-                    RunAnomalyDetectionView)
+                    RunAnomalyDetectionView, MealFlagQueueView,
+                    ReviewMealFlagView, RunMealDetectionView)
 
 urlpatterns = [
     path('score/', ScoreTransactionView.as_view(),
@@ -14,4 +15,10 @@ urlpatterns = [
          name='anomaly-stats'),
     path('run/', RunAnomalyDetectionView.as_view(),
          name='run-detection'),
+    path('meal-flags/', MealFlagQueueView.as_view(),
+         name='meal-flag-queue'),
+    path('meal-flags/run/', RunMealDetectionView.as_view(),
+         name='run-meal-detection'),
+    path('meal-flags/<int:flag_id>/review/', ReviewMealFlagView.as_view(),
+         name='review-meal-flag'),
 ]

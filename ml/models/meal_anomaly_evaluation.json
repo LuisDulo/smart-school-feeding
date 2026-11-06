@@ -1,0 +1,52 @@
+{
+  "model": "Isolation Forest (meal serving)",
+  "features": [
+    "amount_cents",
+    "hour_of_day",
+    "day_of_week",
+    "meals_that_day",
+    "amount_deviation"
+  ],
+  "parameters": {
+    "n_estimators": 100,
+    "contamination": 0.003,
+    "random_state": 42
+  },
+  "dataset": {
+    "total_meals": 8906,
+    "train_meals": 7124,
+    "held_out_meals": 1782,
+    "injected_anomalies": 53,
+    "injected_types": [
+      "night",
+      "weekend",
+      "cost"
+    ]
+  },
+  "metrics": {
+    "model_alone": {
+      "precision": 0.7143,
+      "recall": 0.283,
+      "f1": 0.4054,
+      "real_meals_flagged_pct": 0.34,
+      "recall_by_type": {
+        "night": 0.0769,
+        "weekend": 0.0,
+        "cost": 0.6364
+      },
+      "auc_roc": 0.8386
+    },
+    "model_plus_rules": {
+      "precision": 0.8833,
+      "recall": 1.0,
+      "f1": 0.9381,
+      "real_meals_flagged_pct": 0.39,
+      "recall_by_type": {
+        "night": 1.0,
+        "weekend": 1.0,
+        "cost": 1.0
+      }
+    }
+  },
+  "caution": "The database has no labelled meal anomalies, so the evaluation injects synthetic ones (night or weekend meals, 4-8x the usual cost) into held-out real meals. The model alone cannot flag night or weekend meals because the training data contains none, so the deployed detector adds explainable rules for them. The scores show it separates obvious outliers, not how it performs on real misuse."
+}

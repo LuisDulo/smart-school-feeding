@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   FiSettings, FiCheckCircle, FiCalendar, FiSmartphone,
-  FiCheck, FiAlertTriangle
+  FiCheck, FiAlertTriangle, FiUser, FiInfo
 } from 'react-icons/fi';
 import Topbar from '../components/Topbar';
 import api from '../services/api';
@@ -12,7 +12,31 @@ const SEVERITY_COLORS = {
   LOW:    { bg: '#F0F4F8', color: '#5A6A7A', border: '#CBD5E1' },
 };
 
+const SOURCES = {
+  payments: {
+    label: 'Top-ups',
+    list: '/anomalies/flags/',
+    run: '/anomalies/run/',
+    review: (id) => `/anomalies/flags/${id}/review/`,
+    subtitle: 'Isolation Forest model · review suspicious transactions',
+    runHint: 'Score all transactions',
+  },
+  meals: {
+    label: 'Meal Serving',
+    list: '/anomalies/meal-flags/',
+    run: '/anomalies/meal-flags/run/',
+    review: (id) => `/anomalies/meal-flags/${id}/review/`,
+    subtitle: 'Isolation Forest model + rules · review unusual meals and repeated refusals',
+    runHint: 'Score meals from the last 30 days',
+  },
+};
+
+function formatDateTime(value) {
+  return value ? new Date(value).toLocaleString('en-KE') : '—';
+}
+
 export default function AnomalyFlags() {
+  const [source, setSource] = useState('payments');
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('pending');
@@ -24,7 +48,7 @@ export default function AnomalyFlags() {
     setLoading(true);
     try {
       const param = filter === 'all' ? '' : `?reviewed=${filter === 'pending' ? 'false' : 'true'}`;
-      const res = await api.get(`/anomalies/flags/${param}`);
+      const res = await api.get(`${SOURCES[source].list}${param}`);
       setData(res.data);
     } catch (e) {
       console.error(e);
@@ -33,12 +57,19 @@ export default function AnomalyFlags() {
     }
   };
 
-  useEffect(() => { load(); }, [filter]);
+  useEffect(() => { load(); }, [filter, source]);  // eslint-disable-line react-hooks/exhaustive-deps
+
+  const switchSource = (next) => {
+    setReviewing(null);
+    setNotes('');
+    setData(null);
+    setSource(next);
+  };
 
   const handleRunDetection = async () => {
     setRunning(true);
     try {
-      const res = await api.post('/anomalies/run/');
+      const res = await api.post(SOURCES[source].run);
       alert(`Detection complete. ${res.data.new_flags_created} new flags created.`);
       load();
     } catch (e) {
@@ -50,7 +81,7 @@ export default function AnomalyFlags() {
 
   const handleReview = async (flagId, action) => {
     try {
-      await api.post(`/anomalies/flags/${flagId}/review/`, {
+      await api.post(SOURCES[source].review(flagId), {
         action, review_notes: notes
       });
       setReviewing(null);
@@ -65,9 +96,22 @@ export default function AnomalyFlags() {
     <div style={styles.page}>
       <Topbar
         title="Anomaly Flag Queue"
-        subtitle="Isolation Forest model · review suspicious transactions"
+        subtitle={SOURCES[source].subtitle}
       />
       <div style={styles.content}>
+
+        {/* What is being reviewed */}
+        <div style={styles.tabs}>
+          {Object.entries(SOURCES).map(([key, cfg]) => (
+            <button
+              key={key}
+              style={{ ...styles.tab, ...(source === key ? styles.tabActive : {}) }}
+              onClick={() => switchSource(key)}
+            >
+              {cfg.label}
+            </button>
+          ))}
+        </div>
 
         {/* Summary cards */}
         {data && (
@@ -97,7 +141,7 @@ export default function AnomalyFlags() {
                 <FiSettings style={styles.btnIcon} />
                 {running ? 'Running...' : 'Run Detection'}
               </button>
-              <p style={styles.summaryLabel}>Score all transactions</p>
+              <p style={styles.summaryLabel}>{SOURCES[source].runHint}</p>
             </div>
           </div>
         )}
@@ -126,7 +170,9 @@ export default function AnomalyFlags() {
             <p><FiCheckCircle style={styles.emptyIcon} /> No flags in this view</p>
             <p style={{ fontSize: 13, color: '#9CA3AF' }}>
               {filter === 'pending'
-                ? 'All anomaly flags have been reviewed.'
+                ? (source === 'meals'
+                  ? 'No unusual meals waiting for review.'
+                  : 'All anomaly flags have been reviewed.')
                 : 'No flags found for this filter.'}
             </p>
           </div>
@@ -148,12 +194,29 @@ export default function AnomalyFlags() {
                   }}>
                     {flag.severity}
                   </span>
-                  <span style={styles.flagStudent}>
-                    {flag.transaction.student_name}
-                  </span>
-                  <span style={styles.flagAmount}>
-                    KES {flag.transaction.amount_ksh?.toLocaleString()}
-                  </span>
+                  {source === 'payments' ? (
+                    <>
+                      <span style={styles.flagStudent}>
+                        {flag.transaction.student_name}
+                      </span>
+                      <span style={styles.flagAmount}>
+                        KES {flag.transaction.amount_ksh?.toLocaleString()}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span style={styles.kindBadge}>{flag.kind_label}</span>
+                      <span style={styles.flagStudent}>
+                        {flag.student_name || flag.staff_name}
+                      </span>
+                      {flag.meal && (
+                        <span style={styles.flagAmount}>
+                          KES {flag.meal.amount_ksh.toLocaleString()}
+                        </span>
+                      )}
+                      {flag.is_demo && <span style={styles.demoBadge}>Demo</span>}
+                    </>
+                  )}
                 </div>
                 <div style={styles.flagRight}>
                   <span style={styles.flagScore}>
@@ -165,16 +228,49 @@ export default function AnomalyFlags() {
                 </div>
               </div>
 
+              {source === 'meals' && flag.reasons?.length > 0 && (
+                <ul style={styles.reasonList}>
+                  {flag.reasons.map((reason, i) => (
+                    <li key={i} style={styles.reason}>
+                      <FiInfo style={styles.reasonIcon} />{reason}
+                    </li>
+                  ))}
+                </ul>
+              )}
+
               <div style={styles.flagDetails}>
-                <span style={styles.flagDetail}>
-                  <FiCalendar style={styles.detailIcon} />
-                  {new Date(flag.transaction.created_at)
-                    .toLocaleString('en-KE')}
-                </span>
-                <span style={styles.flagDetail}>
-                  <FiSmartphone style={styles.detailIcon} />
-                  {flag.transaction.mpesa_reference || '—'}
-                </span>
+                {source === 'payments' ? (
+                  <>
+                    <span style={styles.flagDetail}>
+                      <FiCalendar style={styles.detailIcon} />
+                      {formatDateTime(flag.transaction.created_at)}
+                    </span>
+                    <span style={styles.flagDetail}>
+                      <FiSmartphone style={styles.detailIcon} />
+                      {flag.transaction.mpesa_reference || '—'}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span style={styles.flagDetail}>
+                      <FiCalendar style={styles.detailIcon} />
+                      {flag.meal
+                        ? formatDateTime(flag.meal.created_at)
+                        : new Date(flag.flag_date).toLocaleDateString('en-KE')}
+                    </span>
+                    {flag.staff_name && (
+                      <span style={styles.flagDetail}>
+                        <FiUser style={styles.detailIcon} />
+                        Served by {flag.staff_name}
+                      </span>
+                    )}
+                    {flag.meal?.items?.length > 0 && (
+                      <span style={styles.flagDetail}>
+                        {flag.meal.items.join(', ')}
+                      </span>
+                    )}
+                  </>
+                )}
                 {flag.reviewed && (
                   <span style={{
                     ...styles.flagDetail, color: '#1A6E3C'
@@ -291,6 +387,16 @@ const styles = {
   flagDetail: { fontSize: 12, color: '#6B7280', display: 'flex',
                 alignItems: 'center', gap: 6 },
   detailIcon: { width: 13, height: 13, flexShrink: 0 },
+  kindBadge: { fontSize: 11, fontWeight: 600, padding: '3px 10px',
+               borderRadius: 10, background: '#EEF2FF', color: '#3A4AB0' },
+  demoBadge: { fontSize: 10, fontWeight: 700, padding: '2px 8px',
+               borderRadius: 8, background: '#FEF3C7', color: '#92400E',
+               textTransform: 'uppercase' },
+  reasonList: { listStyle: 'none', margin: '0 0 10px', padding: 0 },
+  reason: { fontSize: 13, color: '#374151', display: 'flex', gap: 8,
+            alignItems: 'flex-start', marginBottom: 4 },
+  reasonIcon: { width: 14, height: 14, flexShrink: 0, marginTop: 2,
+                color: '#D07020' },
   flagActions: { marginTop: 12 },
   reviewBtn: { background: '#1A3A5C', color: '#fff', border: 'none',
                borderRadius: 8, padding: '8px 20px', fontSize: 13,
