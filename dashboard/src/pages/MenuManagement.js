@@ -13,6 +13,12 @@ export default function MenuManagement() {
   const [items, setItems] = useState([]);
   const [combos, setCombos] = useState([]);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+
+  // Show one message at a time: an error clears any success notice and vice versa.
+  const showError = (msg) => { setNotice(''); setError(msg); };
+  const showNotice = (msg) => { setError(''); setNotice(msg); };
+  const switchTab = (key) => { setError(''); setNotice(''); setTab(key); };
 
   const loadItems = () => mealsAPI.menuList().then(res => setItems(res.data)).catch(() => setError('Could not load menu items.'));
   const loadCombos = () => mealsAPI.comboList().then(res => setCombos(res.data)).catch(() => setError('Could not load meal combinations.'));
@@ -28,42 +34,47 @@ export default function MenuManagement() {
             <div
               key={t.key}
               style={{ ...styles.tab, ...(tab === t.key ? styles.tabActive : {}) }}
-              onClick={() => setTab(t.key)}
+              onClick={() => switchTab(t.key)}
             >
               {t.label}
             </div>
           ))}
         </div>
 
-        {error && <div style={styles.errorBanner}>{error}</div>}
+        {error && <div style={styles.errorBanner} role="alert">{error}</div>}
+        {notice && <div style={styles.noticeBanner} role="status">{notice}</div>}
 
         {tab === 'items' ? (
-          <ItemsTab items={items} onChanged={loadItems} setError={setError} />
+          <ItemsTab items={items} onChanged={loadItems} setError={showError} setNotice={showNotice} />
         ) : (
-          <CombosTab items={items} combos={combos} onChanged={loadCombos} setError={setError} />
+          <CombosTab items={items} combos={combos} onChanged={loadCombos} setError={showError} setNotice={showNotice} />
         )}
       </div>
     </div>
   );
 }
 
-function ItemsTab({ items, onChanged, setError }) {
+function ItemsTab({ items, onChanged, setError, setNotice }) {
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const handleAdd = async (e) => {
     e.preventDefault();
-    if (!name.trim() || !price) return;
+    const cleanName = name.trim();
+    const priceKes = parseFloat(price);
+    if (!cleanName) { setError('Enter a name for the item.'); return; }
+    if (!(priceKes > 0)) { setError('Enter a price greater than 0.'); return; }
     setSubmitting(true);
     setError('');
     try {
       await mealsAPI.menuCreate({
-        name: name.trim(),
-        price_cents: Math.round(parseFloat(price) * 100),
+        name: cleanName,
+        price_cents: Math.round(priceKes * 100),
       });
       setName('');
       setPrice('');
+      setNotice(`Added "${cleanName}" to the menu.`);
       onChanged();
     } catch (e) {
       setError(e.response?.data?.error || 'Could not add item.');
@@ -76,6 +87,7 @@ function ItemsTab({ items, onChanged, setError }) {
     if (!window.confirm(`Remove "${item.name}" from the menu?`)) return;
     try {
       await mealsAPI.menuDelete(item.id);
+      setNotice(`Removed "${item.name}" from the menu.`);
       onChanged();
     } catch (e) {
       setError(e.response?.data?.error || 'Could not remove item.');
@@ -88,6 +100,7 @@ function ItemsTab({ items, onChanged, setError }) {
         <input
           style={styles.input}
           placeholder="Item name (e.g. Fries)"
+          maxLength={100}
           value={name}
           onChange={e => setName(e.target.value)}
         />
@@ -135,7 +148,7 @@ function ItemsTab({ items, onChanged, setError }) {
   );
 }
 
-function CombosTab({ items, combos, onChanged, setError }) {
+function CombosTab({ items, combos, onChanged, setError, setNotice }) {
   const [name, setName] = useState('');
   const [selectedItems, setSelectedItems] = useState([]);
   const [submitting, setSubmitting] = useState(false);
@@ -151,13 +164,17 @@ function CombosTab({ items, combos, onChanged, setError }) {
 
   const handleAdd = async (e) => {
     e.preventDefault();
-    if (!name.trim() || selectedItems.length === 0) return;
+    const cleanName = name.trim();
+    if (items.length === 0) { setError('Add menu items first (Menu Items tab), then build a combination.'); return; }
+    if (!cleanName) { setError('Enter a name for the combination.'); return; }
+    if (selectedItems.length === 0) { setError('Tick at least one item for the combination.'); return; }
     setSubmitting(true);
     setError('');
     try {
-      await mealsAPI.comboCreate({ name: name.trim(), item_ids: selectedItems });
+      await mealsAPI.comboCreate({ name: cleanName, item_ids: selectedItems });
       setName('');
       setSelectedItems([]);
+      setNotice(`Created combination "${cleanName}".`);
       onChanged();
     } catch (e) {
       setError(e.response?.data?.error || 'Could not create combination.');
@@ -170,6 +187,7 @@ function CombosTab({ items, combos, onChanged, setError }) {
     if (!window.confirm(`Remove "${combo.name}" combination?`)) return;
     try {
       await mealsAPI.comboDelete(combo.id);
+      setNotice(`Removed combination "${combo.name}".`);
       onChanged();
     } catch (e) {
       setError(e.response?.data?.error || 'Could not remove combination.');
@@ -189,6 +207,7 @@ function CombosTab({ items, combos, onChanged, setError }) {
         <input
           style={styles.input}
           placeholder="e.g. Lunch Special"
+          maxLength={100}
           value={name}
           onChange={e => setName(e.target.value)}
         />
@@ -212,7 +231,7 @@ function CombosTab({ items, combos, onChanged, setError }) {
           <span>Total price</span>
           <strong>KES {(previewTotal / 100).toFixed(2)}</strong>
         </div>
-        <button style={styles.submitBtn} type="submit" disabled={submitting || selectedItems.length === 0}>
+        <button style={styles.submitBtn} type="submit" disabled={submitting}>
           {submitting ? 'Creating...' : 'Create Combination'}
         </button>
       </form>
@@ -263,6 +282,8 @@ const styles = {
             alignItems: 'center', gap: 6, whiteSpace: 'nowrap' },
   errorBanner: { background: '#FEE2E2', color: '#C0392B', padding: '10px 16px',
                  borderRadius: 8, fontSize: 13, marginBottom: 16 },
+  noticeBanner: { background: '#DCFCE7', color: '#166534', padding: '10px 16px',
+                  borderRadius: 8, fontSize: 13, marginBottom: 16 },
   tableWrap: { background: '#fff', borderRadius: 12, overflow: 'hidden',
                boxShadow: '0 2px 8px rgba(0,0,0,0.04)' },
   table: { width: '100%', borderCollapse: 'collapse' },

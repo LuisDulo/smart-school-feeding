@@ -38,7 +38,7 @@ export default function SAReports() {
   return (
     <div style={styles.page}>
       <div style={styles.topbar}>
-        <h1 style={styles.title}>Network Reports</h1>
+        <h1 style={styles.title}>Multischool Reports</h1>
         <p style={styles.subtitle}>
           Cross-school data exports and summaries
         </p>

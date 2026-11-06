@@ -3,6 +3,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
+from django.conf import settings
 from django.db import transaction as db_transaction
 from django.core.exceptions import ValidationError
 from .models import (MealDistributionEvent, MealAccount,
@@ -11,6 +12,36 @@ from rest_framework import serializers
 from core.permissions import (IsKitchenStaff, IsAdminOrBursar, IsSchoolAdmin,
                               IsSchoolStaff)
 from core.pagination import paginate_queryset
+
+
+NAME_MAX_LENGTH = 100  # matches MenuItem.name / MealCombo.name
+
+
+def clean_name(value):
+    """Return (name, error). Names must be non-blank text of at most 100 chars."""
+    if not isinstance(value, str) or not value.strip():
+        return None, 'name is required.'
+    value = value.strip()
+    if len(value) > NAME_MAX_LENGTH:
+        return None, f'name must be {NAME_MAX_LENGTH} characters or fewer.'
+    return value, None
+
+
+def clean_item_ids(value):
+    """Return (list of unique int ids, error). Accepts ints or digit strings."""
+    if not isinstance(value, list):
+        return None, 'item_ids must be a list of menu item ids.'
+    ids = []
+    for raw in value:
+        if isinstance(raw, bool) or not isinstance(raw, (int, str)):
+            return None, 'item_ids must be a list of menu item ids.'
+        try:
+            item_id = int(raw)
+        except ValueError:
+            return None, 'item_ids must be a list of menu item ids.'
+        if item_id not in ids:
+            ids.append(item_id)
+    return ids, None
 
 
 class MenuItemSerializer(serializers.ModelSerializer):
@@ -88,11 +119,11 @@ class MenuItemListCreateView(APIView):
                 {'error': 'Only school admins can manage the menu.'},
                 status=status.HTTP_403_FORBIDDEN)
 
-        name = request.data.get('name', '').strip()
+        name, name_error = clean_name(request.data.get('name'))
         price_cents = request.data.get('price_cents')
-        if not name or price_cents is None:
+        if name_error or price_cents is None:
             return Response(
-                {'error': 'name and price_cents are required.'},
+                {'error': name_error or 'name and price_cents are required.'},
                 status=status.HTTP_400_BAD_REQUEST)
         try:
             price_cents = int(price_cents)
@@ -126,7 +157,11 @@ class MenuItemDetailView(APIView):
                             status=status.HTTP_404_NOT_FOUND)
 
         if 'name' in request.data:
-            item.name = request.data['name'].strip()
+            name, name_error = clean_name(request.data['name'])
+            if name_error:
+                return Response({'error': name_error},
+                                status=status.HTTP_400_BAD_REQUEST)
+            item.name = name
         if 'price_cents' in request.data:
             try:
                 price_cents = int(request.data['price_cents'])
@@ -176,10 +211,13 @@ class MealComboListCreateView(APIView):
                 {'error': 'Only school admins can manage meal combos.'},
                 status=status.HTTP_403_FORBIDDEN)
 
-        name = request.data.get('name', '').strip()
-        item_ids = request.data.get('item_ids') or []
-        if not name:
-            return Response({'error': 'name is required.'},
+        name, name_error = clean_name(request.data.get('name'))
+        if name_error:
+            return Response({'error': name_error},
+                            status=status.HTTP_400_BAD_REQUEST)
+        item_ids, ids_error = clean_item_ids(request.data.get('item_ids') or [])
+        if ids_error:
+            return Response({'error': ids_error},
                             status=status.HTTP_400_BAD_REQUEST)
         if not item_ids:
             return Response({'error': 'Select at least one item for the combo.'},
@@ -187,7 +225,7 @@ class MealComboListCreateView(APIView):
 
         items = list(MenuItem.objects.filter(
             id__in=item_ids, school=request.user.school, is_active=True))
-        if len(items) != len(set(item_ids)):
+        if len(items) != len(item_ids):
             return Response(
                 {'error': 'One or more selected items are unavailable.'},
                 status=status.HTTP_400_BAD_REQUEST)
@@ -216,16 +254,23 @@ class MealComboDetailView(APIView):
                             status=status.HTTP_404_NOT_FOUND)
 
         if 'name' in request.data:
-            combo.name = request.data['name'].strip()
+            name, name_error = clean_name(request.data['name'])
+            if name_error:
+                return Response({'error': name_error},
+                                status=status.HTTP_400_BAD_REQUEST)
+            combo.name = name
         if 'item_ids' in request.data:
-            item_ids = request.data['item_ids'] or []
+            item_ids, ids_error = clean_item_ids(request.data['item_ids'] or [])
+            if ids_error:
+                return Response({'error': ids_error},
+                                status=status.HTTP_400_BAD_REQUEST)
             if not item_ids:
                 return Response(
                     {'error': 'Select at least one item for the combo.'},
                     status=status.HTTP_400_BAD_REQUEST)
             items = list(MenuItem.objects.filter(
                 id__in=item_ids, school=request.user.school, is_active=True))
-            if len(items) != len(set(item_ids)):
+            if len(items) != len(item_ids):
                 return Response(
                     {'error': 'One or more selected items are unavailable.'},
                     status=status.HTTP_400_BAD_REQUEST)
@@ -260,24 +305,28 @@ class RecordMealView(APIView):
 
     def post(self, request):
         student_id = request.data.get('student_id')
-        item_ids = request.data.get('item_ids') or []
+        item_ids, ids_error = clean_item_ids(request.data.get('item_ids') or [])
         if not student_id:
             return Response({'error': 'student_id is required.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if ids_error:
+            return Response({'error': ids_error},
                             status=status.HTTP_400_BAD_REQUEST)
         if not item_ids:
             return Response({'error': 'Select at least one food item.'},
                             status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            student = User.objects.get(id=student_id, role='student')
+            student = User.objects.get(
+                id=student_id, role='student', school=request.user.school)
             meal_account = student.meal_account
-        except (User.DoesNotExist, MealAccount.DoesNotExist):
+        except (User.DoesNotExist, MealAccount.DoesNotExist, ValueError, TypeError):
             return Response({'error': 'Student or meal account not found.'},
                             status=status.HTTP_404_NOT_FOUND)
 
         items = list(MenuItem.objects.filter(
             id__in=item_ids, school=request.user.school, is_active=True))
-        if len(items) != len(set(item_ids)):
+        if len(items) != len(item_ids):
             return Response(
                 {'error': 'One or more selected items are unavailable.'},
                 status=status.HTTP_400_BAD_REQUEST)
@@ -285,12 +334,18 @@ class RecordMealView(APIView):
         total_cents = sum(item.price_cents for item in items)
 
         today = date.today()
-        if MealDistributionEvent.objects.filter(
-                meal_account=meal_account, meal_date=today).exists():
+        daily_limit = settings.MAX_MEALS_PER_STUDENT_PER_DAY
+        meals_today = MealDistributionEvent.objects.filter(
+            meal_account=meal_account, meal_date=today).count()
+        if daily_limit and meals_today >= daily_limit:
+            plural = 'meal' if daily_limit == 1 else 'meals'
             return Response({
-                'error': 'Meal already recorded for this student today.',
+                'error': (f'{student.full_name} has already had the daily '
+                          f'limit of {daily_limit} {plural} today.'),
                 'student': student.full_name,
-                'date': str(today)
+                'date': str(today),
+                'meals_today': meals_today,
+                'daily_limit': daily_limit,
             }, status=status.HTTP_409_CONFLICT)
 
         if meal_account.balance_cents - total_cents < -meal_account.credit_limit_cents:
@@ -328,7 +383,9 @@ class RecordMealView(APIView):
             'new_balance_ksh': meal_account.balance_cents / 100,
             'served_by': recorded_by.full_name,
             'served_by_email': recorded_by.email,
-            'event_id': event.id
+            'event_id': event.id,
+            'meals_today': meals_today + 1,
+            'daily_limit': daily_limit,
         }, status=status.HTTP_201_CREATED)
 
 
@@ -458,13 +515,16 @@ class StudentLookupView(APIView):
 
         results = []
         today = date.today()
+        daily_limit = settings.MAX_MEALS_PER_STUDENT_PER_DAY
         for s in students:
             try:
                 meal_account = s.meal_account
-                already_served = MealDistributionEvent.objects.filter(
+                meals_today = MealDistributionEvent.objects.filter(
                     meal_account=meal_account,
                     meal_date=today
-                ).exists()
+                ).count()
+                already_served = meals_today > 0
+                at_limit = bool(daily_limit) and meals_today >= daily_limit
                 results.append({
                     'id': s.id,
                     'full_name': s.full_name,
@@ -476,12 +536,14 @@ class StudentLookupView(APIView):
                         meal_account.available_to_spend_cents() / 100,
                     'is_low_balance': meal_account.balance_cents < 10000,
                     'already_served_today': already_served,
+                    'meals_today': meals_today,
+                    'daily_limit': daily_limit,
                     # Affordability now depends on which items get picked
                     # at serve time (variable-price menu), so eligibility
-                    # here is just "hasn't already eaten today" — the
+                    # here is just "hasn't hit today's meal limit" — the
                     # actual balance/credit check happens in
                     # RecordMealView against the real selected total.
-                    'eligible': not already_served
+                    'eligible': not at_limit
                 })
             except MealAccount.DoesNotExist:
                 continue

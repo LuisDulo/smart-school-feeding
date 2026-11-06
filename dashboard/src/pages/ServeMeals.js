@@ -261,8 +261,14 @@ export default function ServeMeals() {
                     )}
                   </td>
                   <td style={styles.td}>
-                    {s.already_served_today ? (
-                      <span style={styles.badgeServed}>Already served</span>
+                    {!s.eligible ? (
+                      <span style={styles.badgeServed}>
+                        Daily limit reached ({s.meals_today}/{s.daily_limit})
+                      </span>
+                    ) : s.already_served_today ? (
+                      <span style={styles.badgeOk}>
+                        Served {s.meals_today}{s.daily_limit ? ` of ${s.daily_limit}` : ''} today
+                      </span>
                     ) : (
                       <span style={styles.badgeOk}>Eligible</span>
                     )}
@@ -276,7 +282,7 @@ export default function ServeMeals() {
                       disabled={!s.eligible}
                       onClick={() => openServeModal(s)}
                     >
-                      Serve Meal
+                      {!s.eligible ? 'Limit reached' : s.already_served_today ? 'Serve Another' : 'Serve Meal'}
                     </button>
                   </td>
                 </tr>

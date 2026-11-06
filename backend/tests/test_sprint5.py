@@ -264,12 +264,26 @@ class TestMealDistribution(TestCase):
         self.meal_account.refresh_from_db()
         self.assertEqual(self.meal_account.balance_cents, 95000)
 
-    def test_duplicate_meal_returns_409(self):
+    def test_second_meal_same_day_is_allowed(self):
         MealDistributionEvent.objects.create(
             meal_account=self.meal_account,
             recorded_by=self.kitchen,
             meal_date=date.today(),
             meals_served=1)
+        res = self.client.post(
+            '/api/meals/serve/',
+            {'student_id': self.student.id, 'item_ids': [self.meal_item.id]},
+            content_type='application/json',
+            HTTP_AUTHORIZATION=f'Bearer {self.token}')
+        self.assertEqual(res.status_code, 201)
+
+    def test_meal_over_the_daily_limit_returns_409(self):
+        for _ in range(2):
+            MealDistributionEvent.objects.create(
+                meal_account=self.meal_account,
+                recorded_by=self.kitchen,
+                meal_date=date.today(),
+                meals_served=1)
         res = self.client.post(
             '/api/meals/serve/',
             {'student_id': self.student.id, 'item_ids': [self.meal_item.id]},
