@@ -83,6 +83,8 @@ Safaricom must reach `POST /api/payments/callback/` over public HTTPS. For local
 
 Trained models are committed in `ml/models/`. To retrain, run the scripts from inside `ml/`, for example `python train_xgboost.py` and `python compare_models.py` for the forecasting models. For anomaly detection run `python train_isolation_forest.py`, `python train_local_outlier_factor.py` and then `python compare_anomaly_models.py`, which writes the comparison shown on the super admin Model Comparison page.
 
+Meal-serving anomalies use a separate Isolation Forest: `python train_meal_anomaly_model.py` retrains it from the meal events in the database and writes `meal_anomaly_evaluation.json`, which the Model Comparison page also shows. The database has no labelled meal anomalies, so it is evaluated by injecting synthetic ones into held-out meals. The deployed detector combines the model with explainable rules (a meal outside 06:00-17:00, on a weekend, or at 3x or more of the student's usual cost), because a forest cannot learn to flag night or weekend meals that never appear in its training data.
+
 ## Running the tests
 
 ```bash
@@ -93,6 +95,8 @@ python -m pytest
 ## Demo data
 
 `python manage.py populate_recent_activity` backfills meal and top-up activity up to today, and `python manage.py populate_demo_extras` fills credit requests, support issues and forecast history. Run these before a demonstration so the charts are not empty.
+
+**Anomalies.** Every meal served is scored as it happens, and refused attempts to serve past the daily meal limit are logged; repeated refusals for one student (2 or more in a day) or by one member of staff (5 or more) raise a flag. These appear on the Anomaly Flags page under the Meal Serving tab. To score meals already in the database run `python manage.py scan_meal_anomalies --days 30` (add `--dry-run` to preview). For a demonstration, `python manage.py simulate_anomalies` creates a handful of realistic unusual cases (a very large top-up, a burst of top-ups, a 3 a.m. payment, a night meal, a weekend meal, a very expensive meal and repeated refusals) and runs them through the real detectors. It does not change any balance, and `python manage.py simulate_anomalies --cleanup` removes everything it created.
 
 ## Configuration and secrets
 

@@ -6,6 +6,9 @@ from rest_framework.permissions import IsAuthenticated
 from django.conf import settings
 from django.db import transaction as db_transaction
 from django.core.exceptions import ValidationError
+import logging
+
+from anomalies import meal_detection
 from .push import notify_account, ksh
 from .models import (MealDistributionEvent, MealAccount,
                       User, PaymentTransaction, MenuItem, MealCombo)
@@ -14,6 +17,8 @@ from core.permissions import (IsKitchenStaff, IsAdminOrBursar, IsSchoolAdmin,
                               IsSchoolStaff)
 from core.pagination import paginate_queryset
 
+
+logger = logging.getLogger(__name__)
 
 NAME_MAX_LENGTH = 100  # matches MenuItem.name / MealCombo.name
 
@@ -339,6 +344,11 @@ class RecordMealView(APIView):
         meals_today = MealDistributionEvent.objects.filter(
             meal_account=meal_account, meal_date=today).count()
         if daily_limit and meals_today >= daily_limit:
+            try:
+                meal_detection.record_blocked_attempt(
+                    meal_account, request.user, today=today)
+            except Exception:
+                logger.exception('Could not record blocked serve attempt')
             plural = 'meal' if daily_limit == 1 else 'meals'
             return Response({
                 'error': (f'{student.full_name} has already had the daily '
@@ -374,6 +384,11 @@ class RecordMealView(APIView):
             event.items.set(items)
             meal_account.balance_cents -= total_cents
             meal_account.save()
+
+        try:
+            meal_detection.flag_meal_event(event)
+        except Exception:
+            logger.exception('Could not score served meal for anomalies')
 
         notify_account(
             meal_account,

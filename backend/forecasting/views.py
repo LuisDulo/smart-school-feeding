@@ -307,6 +307,8 @@ class ModelComparisonView(APIView):
                     os.path.join(ML_DIR, 'isolation_forest.joblib')),
                 'local_outlier_factor': os.path.exists(
                     os.path.join(ML_DIR, 'local_outlier_factor.joblib')),
+                'meal_isolation_forest': os.path.exists(
+                    os.path.join(ML_DIR, 'meal_isolation_forest.joblib')),
             },
             'default_model': DEFAULT_MODEL_KEY,
         }
@@ -317,6 +319,7 @@ class ModelComparisonView(APIView):
             ('xgboost_metrics', 'xgb_metrics.json'),
             ('risk_classifier_metrics', 'risk_classifier_metrics.json'),
             ('anomaly_comparison', 'anomaly_model_comparison.json'),
+            ('meal_anomaly_evaluation', 'meal_anomaly_evaluation.json'),
         ]:
             path = os.path.join(ML_DIR, filename)
             if os.path.exists(path):

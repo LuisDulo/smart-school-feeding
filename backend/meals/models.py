@@ -446,3 +446,69 @@ class PushReminderLog(models.Model):
     class Meta:
         db_table = 'push_reminder_logs'
         unique_together = ('meal_account', 'sent_on')
+
+
+class BlockedServeAttempt(models.Model):
+    """A kitchen attempt to serve a meal that the system refused because the
+    student had already reached the daily meal limit. Kept so repeated
+    attempts (by a student, or by one member of staff) can be flagged."""
+    meal_account = models.ForeignKey(
+        MealAccount, on_delete=models.CASCADE,
+        related_name='blocked_attempts')
+    recorded_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='blocked_serve_attempts')
+    reason = models.CharField(max_length=30, default='daily_limit')
+    attempt_date = models.DateField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'blocked_serve_attempts'
+        indexes = [
+            models.Index(fields=['meal_account', 'attempt_date']),
+            models.Index(fields=['recorded_by', 'attempt_date']),
+        ]
+
+
+class MealAnomalyFlag(models.Model):
+    """An unusual meal-serving event raised for review. Counterpart of
+    AnomalyFlag (which covers M-Pesa top-ups)."""
+    KIND_CHOICES = [
+        ('pattern', 'Unusual meal'),
+        ('repeat_attempts', 'Repeated blocked attempts for a student'),
+        ('staff_attempts', 'Repeated blocked attempts by a staff member'),
+    ]
+    school = models.ForeignKey(
+        School, on_delete=models.CASCADE, related_name='meal_anomaly_flags')
+    meal_account = models.ForeignKey(
+        MealAccount, on_delete=models.CASCADE, null=True, blank=True,
+        related_name='meal_anomaly_flags')
+    meal_event = models.OneToOneField(
+        MealDistributionEvent, on_delete=models.CASCADE, null=True,
+        blank=True, related_name='anomaly_flag')
+    recorded_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='meal_flags_as_server')
+    kind = models.CharField(max_length=20, choices=KIND_CHOICES)
+    flag_date = models.DateField()
+    anomaly_score = models.FloatField()
+    reasons = models.JSONField(default=list)
+    # Rows made by `manage.py simulate_anomalies` so they can be cleaned up.
+    is_demo = models.BooleanField(default=False)
+    flagged_at = models.DateTimeField(auto_now_add=True)
+    reviewed = models.BooleanField(default=False)
+    reviewed_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='reviewed_meal_flags')
+    review_notes = models.TextField(blank=True, default='')
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"Meal flag ({self.kind}) — score {self.anomaly_score:.2f}"
+
+    class Meta:
+        db_table = 'meal_anomaly_flags'
+        indexes = [
+            models.Index(fields=['school', 'reviewed']),
+            models.Index(fields=['anomaly_score']),
+        ]
