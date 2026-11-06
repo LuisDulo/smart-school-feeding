@@ -16,8 +16,7 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "package": "com.luisdulo.smartschoolfeeding",
-      "googleServicesFile": "./google-services.json"
+      "package": "com.luisdulo.smartschoolfeeding"
     },
     "web": {
       "favicon": "./assets/favicon.png"
