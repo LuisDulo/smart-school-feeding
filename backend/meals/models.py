@@ -410,3 +410,39 @@ class TermSchedule(models.Model):
 
     class Meta:
         db_table = 'term_schedules'
+
+
+class DeviceToken(models.Model):
+    """An Expo push token for one installed copy of the mobile app.
+
+    A token is unique to a phone/app install, so it is unique here too: if a
+    different user logs in on the same phone the token simply moves to them
+    (see PushTokenView), which stops the previous user's alerts landing on a
+    handset they no longer use."""
+    PLATFORM_CHOICES = [('android', 'Android'), ('ios', 'iOS')]
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='device_tokens')
+    token = models.CharField(max_length=255, unique=True)
+    platform = models.CharField(
+        max_length=10, choices=PLATFORM_CHOICES, default='android')
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_seen = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"{self.user.full_name} — {self.platform}"
+
+    class Meta:
+        db_table = 'device_tokens'
+
+
+class PushReminderLog(models.Model):
+    """Records that a payment reminder went out for an account on a day, so
+    re-running the reminder command never nags a parent twice in one day."""
+    meal_account = models.ForeignKey(
+        MealAccount, on_delete=models.CASCADE, related_name='reminder_logs')
+    sent_on = models.DateField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'push_reminder_logs'
+        unique_together = ('meal_account', 'sent_on')

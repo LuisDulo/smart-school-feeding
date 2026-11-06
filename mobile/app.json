@@ -15,7 +15,9 @@
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
-      }
+      },
+      "package": "com.luisdulo.smartschoolfeeding",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -27,7 +29,14 @@
           "cameraPermission": "Kitchen staff use the camera to scan a student's QR code at the serving counter."
         }
       ],
-      "expo-sharing"
+      "expo-sharing",
+      [
+        "expo-notifications",
+        {
+          "color": "#1A6E3C",
+          "defaultChannel": "default"
+        }
+      ]
     ]
   }
 }

@@ -2,8 +2,8 @@
 // module before anything else touches it (react-native-gesture-handler's
 // own setup requirement; @react-navigation/stack depends on it).
 import 'react-native-gesture-handler';
-import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import React, { useEffect } from 'react';
+import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { ActivityIndicator, View } from 'react-native';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
@@ -23,11 +23,26 @@ import BalanceTrendScreen from './src/screens/BalanceTrendScreen';
 import MonthlyReportScreen from './src/screens/MonthlyReportScreen';
 import ReminderSettingsScreen from './src/screens/ReminderSettingsScreen';
 import QRCodeScreen from './src/screens/QRCodeScreen';
+import {
+  configureNotifications,
+  listenForNotificationTaps,
+} from './src/services/pushNotifications';
+
+configureNotifications();
+const navigationRef = createNavigationContainerRef();
 
 const Stack = createStackNavigator();
 
 function AppNavigator() {
   const { user, loading } = useAuth();
+
+  // Tapping a phone notification opens the matching screen (once logged in).
+  useEffect(() => {
+    if (!user || loading) return undefined;
+    return listenForNotificationTaps((screen) => {
+      if (navigationRef.isReady()) navigationRef.navigate(screen);
+    });
+  }, [user, loading]);
 
   if (loading) {
     return (
@@ -72,7 +87,7 @@ function AppNavigator() {
 export default function App() {
   return (
     <AuthProvider>
-      <NavigationContainer>
+      <NavigationContainer ref={navigationRef}>
         <AppNavigator />
       </NavigationContainer>
     </AuthProvider>

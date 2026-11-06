@@ -5,13 +5,13 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { syncWeeklyReminder } from '../services/pushNotifications';
 
-// Plain JS Date.getDay() values (0 = Sunday) — this is an in-app-only
-// reminder (see TopUpReminderBanner), not an OS push/local notification:
-// expo-notifications' Android push-token registration now hard-crashes
-// inside Expo Go on SDK 53+ the moment the module is imported, with no
-// way to opt out short of a custom development build. A banner shown
-// when the app is opened works everywhere without that dependency.
+// Plain JS Date.getDay() values (0 = Sunday). The reminder is shown two ways:
+// as an in-app banner when the app is opened (TopUpReminderBanner, works
+// everywhere) and, in the development build, as a real phone notification on
+// the chosen day and time (see services/pushNotifications.js — that module
+// can't run inside Expo Go on SDK 53+, so there only the banner appears).
 export const REMINDER_DAYS = [
   { label: 'Monday', value: 1 },
   { label: 'Tuesday', value: 2 },
@@ -68,11 +68,23 @@ export default function ReminderSettingsScreen({ navigation }) {
       // one already showed today — otherwise changing the day/time here
       // wouldn't take effect until next week.
       await AsyncStorage.removeItem('reminder_last_shown');
+      const phone = await syncWeeklyReminder({
+        enabled, day: selectedDay, hour: selectedHour,
+      });
+      const when = `${REMINDER_DAYS.find(d => d.value === selectedDay)?.label} at ${REMINDER_TIMES.find(t => t.hour === selectedHour)?.label}`;
+      let message = 'Reminders disabled.';
+      if (enabled) {
+        if (phone.scheduled) {
+          message = `You'll get a phone notification every ${when}.`;
+        } else if (phone.reason === 'denied') {
+          message = `Saved, but notifications are blocked for this app. You'll see a reminder in the app every ${when}. Turn notifications on in your phone's settings for phone alerts.`;
+        } else {
+          message = `You'll see a reminder in the app every ${when}.`;
+        }
+      }
       Alert.alert(
         'Saved',
-        enabled
-          ? `You'll see a reminder in the app every ${REMINDER_DAYS.find(d => d.value === selectedDay)?.label} from ${REMINDER_TIMES.find(t => t.hour === selectedHour)?.label}`
-          : 'Reminders disabled.',
+        message,
         [{ text: 'OK', onPress: () => navigation.goBack() }]
       );
     } catch (e) {
@@ -100,7 +112,7 @@ export default function ReminderSettingsScreen({ navigation }) {
           <View style={{ flex: 1 }}>
             <Text style={styles.toggleTitle}>Weekly Reminder</Text>
             <Text style={styles.toggleSub}>
-              Shown in the app when you open it on the chosen day
+              A phone notification on the chosen day and time
             </Text>
           </View>
           <Switch

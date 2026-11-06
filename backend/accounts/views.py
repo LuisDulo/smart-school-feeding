@@ -4,7 +4,8 @@ from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError
-from meals.models import User, School
+from meals.models import User, School, DeviceToken
+from meals.push import is_valid_token
 from .serializers import (RegisterSerializer, LoginSerializer,
                            UserProfileSerializer, SchoolSerializer)
 import bcrypt
@@ -144,3 +145,35 @@ class SchoolListView(APIView):
     def get(self, request):
         schools = School.objects.all()
         return Response(SchoolSerializer(schools, many=True).data)
+
+
+class PushTokenView(APIView):
+    """
+    The mobile app registers (POST) or removes (DELETE) its Expo push token.
+    Registering a token already held by another user moves it to the caller,
+    so a phone that changes hands never keeps receiving the old owner's alerts.
+    POST   /api/auth/push-token/   { token, platform: 'android'|'ios' }
+    DELETE /api/auth/push-token/   { token }
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        token = request.data.get('token')
+        platform = request.data.get('platform') or 'android'
+        if not is_valid_token(token):
+            return Response({'error': 'A valid Expo push token is required.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if platform not in ('android', 'ios'):
+            return Response({'error': "platform must be 'android' or 'ios'."},
+                            status=status.HTTP_400_BAD_REQUEST)
+        DeviceToken.objects.update_or_create(
+            token=token, defaults={'user': request.user, 'platform': platform})
+        return Response({'registered': True})
+
+    def delete(self, request):
+        token = request.data.get('token')
+        if not isinstance(token, str) or not token:
+            return Response({'error': 'token is required.'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        DeviceToken.objects.filter(token=token, user=request.user).delete()
+        return Response({'registered': False})

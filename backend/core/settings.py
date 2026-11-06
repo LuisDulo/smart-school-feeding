@@ -191,3 +191,13 @@ try:
         0, int(os.getenv('MAX_MEALS_PER_STUDENT_PER_DAY', '2')))
 except ValueError:
     MAX_MEALS_PER_STUDENT_PER_DAY = 2
+
+# ---------------------------------------------------------------------------
+# Push notifications (Expo push service -> Firebase Cloud Messaging)
+# ---------------------------------------------------------------------------
+
+PUSH_ENABLED = os.getenv('PUSH_ENABLED', 'True') == 'True'
+# Deliver synchronously instead of in a background thread (used by tests).
+PUSH_SYNC = False
+# Only needed if "Enhanced push security" is switched on in the Expo dashboard.
+EXPO_ACCESS_TOKEN = os.getenv('EXPO_ACCESS_TOKEN', '')

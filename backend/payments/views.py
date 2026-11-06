@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from django.utils import timezone
+from meals.push import notify_account, ksh
 from meals.models import PaymentTransaction, MealAccount, User, CreditRequest
 from .mpesa import MPesaService
 from .serializers import (InitiatePaymentSerializer,
@@ -167,6 +168,14 @@ def mpesa_callback(request):
                 logger.info(
                     f"Payment confirmed: {checkout_request_id} "
                     f"KES {tx.amount_cents/100} → account {meal_account.id}")
+                notify_account(
+                    meal_account,
+                    title='Top-up received',
+                    body=(f"{ksh(tx.amount_cents)} added to "
+                          f"{meal_account.student.full_name}'s meal account. "
+                          f"New balance: {ksh(meal_account.balance_cents)}"),
+                    data={'type': 'topup', 'status': 'confirmed',
+                          'transaction_id': tx.id})
 
                 # Auto-score for anomalies after confirming payment
                 try:
@@ -195,6 +204,14 @@ def mpesa_callback(request):
                 tx.save()
                 logger.warning(
                     f"Payment failed: {checkout_request_id} — {result_desc}")
+                notify_account(
+                    tx.meal_account,
+                    title='Top-up not completed',
+                    body=(f"Your {ksh(tx.amount_cents)} top-up for "
+                          f"{tx.meal_account.student.full_name} did not go "
+                          f"through. Please try again."),
+                    data={'type': 'topup', 'status': 'failed',
+                          'transaction_id': tx.id})
 
         return JsonResponse({"ResultCode": 0, "ResultDesc": "Accepted"})
 
