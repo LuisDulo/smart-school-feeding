@@ -19,3 +19,7 @@ Thumbs.db
 
 # Local dev-tool config (not needed by the app itself)
 .claude/
+
+# Firebase / Google service-account private keys (push notifications) - never commit
+*service-account*.json
+*firebase-adminsdk*.json
