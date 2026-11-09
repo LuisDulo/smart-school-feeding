@@ -99,6 +99,11 @@ class InitiatePaymentView(APIView):
             )
 
             checkout_request_id = result.get('CheckoutRequestID', '')
+            if not checkout_request_id:
+                # Daraja refused the request. Never leave a pending row with
+                # an empty reference for a callback to match.
+                raise ValueError(f"STK Push returned no CheckoutRequestID: "
+                                 f"{result.get('errorMessage', 'no reason given')}")
             pending_tx.mpesa_reference = checkout_request_id
             pending_tx.save()
 
