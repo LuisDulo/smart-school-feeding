@@ -1,4 +1,4 @@
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from meals.models import (School, User, MealAccount,
                            PaymentTransaction, AnomalyFlag,
                            MealDistributionEvent, MenuItem)
@@ -122,6 +122,7 @@ class TestAuthentication(TestCase):
 # PAYMENT TESTS
 # ════════════════════════════════════════
 
+@override_settings(DARAJA_CALLBACK_TOKEN='test-token')
 class TestPayments(TestCase):
     def setUp(self):
         self.school = create_school(
@@ -157,7 +158,7 @@ class TestPayments(TestCase):
             }
         }
         res = self.client.post(
-            '/api/payments/callback/',
+            '/api/payments/callback/test-token/',
             json.dumps(payload),
             content_type='application/json')
         self.assertEqual(res.status_code, 200)
@@ -178,7 +179,7 @@ class TestPayments(TestCase):
             }
         }
         res = self.client.post(
-            '/api/payments/callback/',
+            '/api/payments/callback/test-token/',
             json.dumps(payload),
             content_type='application/json')
         self.assertEqual(res.status_code, 200)

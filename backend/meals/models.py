@@ -154,6 +154,9 @@ class PaymentTransaction(models.Model):
     )
     amount_cents = models.IntegerField()
     mpesa_reference = models.CharField(max_length=100, blank=True, default='')
+    # M-Pesa's own receipt number (e.g. QK7X3RY8), set when a callback is
+    # credited. Unique, so one real payment can never be credited twice.
+    mpesa_receipt = models.CharField(max_length=30, blank=True, default='')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES,
                               default='pending')
     callback_payload = models.JSONField(null=True, blank=True)
@@ -167,6 +170,12 @@ class PaymentTransaction(models.Model):
         indexes = [
             models.Index(fields=['status']),
             models.Index(fields=['created_at']),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['mpesa_receipt'],
+                condition=~models.Q(mpesa_receipt=''),
+                name='unique_mpesa_receipt'),
         ]
 
 

@@ -51,7 +51,7 @@ class PushBase(TestCase):
             url, body, content_type='application/json', **bearer(user))
 
 
-@override_settings(PUSH_SYNC=True)
+@override_settings(PUSH_SYNC=True, DARAJA_CALLBACK_TOKEN='test-token')
 class TestPushDelivery(PushBase):
     def serve(self):
         with self.captureOnCommitCallbacks(execute=True):
@@ -117,10 +117,15 @@ class TestPushDelivery(PushBase):
 
     # ---- M-Pesa callback ----------------------------------------------------
     def callback(self, ref, code):
-        payload = {'Body': {'stkCallback': {
-            'ResultCode': code, 'ResultDesc': 'x', 'CheckoutRequestID': ref}}}
+        stk = {'ResultCode': code, 'ResultDesc': 'x', 'CheckoutRequestID': ref}
+        if code == 0:
+            tx = PaymentTransaction.objects.get(mpesa_reference=ref)
+            stk['CallbackMetadata'] = {'Item': [
+                {'Name': 'Amount', 'Value': tx.amount_cents // 100},
+                {'Name': 'MpesaReceiptNumber', 'Value': f'R{ref}'}]}
+        payload = {'Body': {'stkCallback': stk}}
         with self.captureOnCommitCallbacks(execute=True):
-            return self.client.post('/api/payments/callback/', payload,
+            return self.client.post('/api/payments/callback/test-token/', payload,
                                     content_type='application/json')
 
     @mock.patch('meals.push._post_to_expo')
