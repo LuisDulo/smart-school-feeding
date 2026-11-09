@@ -10,6 +10,10 @@ from .serializers import (RegisterSerializer, LoginSerializer,
                            UserProfileSerializer, SchoolSerializer)
 import bcrypt
 
+# Checked when the email is unknown, so that path costs the same bcrypt work
+# as a wrong password and response times do not reveal which emails exist.
+DUMMY_HASH = bcrypt.hashpw(b'no-such-user', bcrypt.gensalt()).decode('utf-8')
+
 
 def get_tokens_for_user(user):
     """Generate JWT access and refresh tokens for a user."""
@@ -55,19 +59,14 @@ class LoginView(APIView):
         email = serializer.validated_data['email']
         password = serializer.validated_data['password']
 
-        try:
-            user = User.objects.get(email=email)
-        except User.DoesNotExist:
-            return Response(
-                {'error': 'Invalid email or password.'},
-                status=status.HTTP_401_UNAUTHORIZED
-            )
+        user = User.objects.filter(email=email).first()
+        stored_hash = user.hashed_password if user else DUMMY_HASH
 
         try:
             password_matches = bcrypt.checkpw(
                 password.encode('utf-8'),
-                user.hashed_password.encode('utf-8')
-            )
+                stored_hash.encode('utf-8')
+            ) and user is not None
         except ValueError:
             # hashed_password isn't a valid bcrypt hash (e.g. legacy/corrupt
             # data) — treat as a failed login rather than a 500.
