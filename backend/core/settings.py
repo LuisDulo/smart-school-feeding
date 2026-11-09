@@ -181,6 +181,24 @@ CORS_ALLOWED_ORIGINS = [
 CORS_ALLOW_ALL_ORIGINS = DEBUG
 
 # ---------------------------------------------------------------------------
+# HTTPS (production only, so runserver keeps working over plain HTTP)
+# ---------------------------------------------------------------------------
+
+if not DEBUG:
+    # Set SECURE_SSL_REDIRECT=False only for a trusted HTTP-only test setup.
+    SECURE_SSL_REDIRECT = os.getenv('SECURE_SSL_REDIRECT', 'True') == 'True'
+    SECURE_HSTS_SECONDS = int(os.getenv('SECURE_HSTS_SECONDS', '31536000'))
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    if os.getenv('NUM_PROXIES'):
+        # Behind a proxy that terminates TLS, trust its X-Forwarded-Proto.
+        # Only safe when that proxy overwrites the header, which is why it
+        # is tied to NUM_PROXIES being set.
+        SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# ---------------------------------------------------------------------------
 # Meals
 # ---------------------------------------------------------------------------
 
