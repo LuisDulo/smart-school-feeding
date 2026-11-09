@@ -23,15 +23,16 @@ export default function TopUpScreen({ navigation }) {
 
   const getAmountCents = () => {
     if (selectedAmount) return selectedAmount;
-    const ksh = parseFloat(customAmount);
-    if (!isNaN(ksh) && ksh >= 1) return Math.round(ksh * 100);
+    const ksh = Number(customAmount);
+    // M-Pesa charges whole shillings only, and the server refuses anything else.
+    if (Number.isInteger(ksh) && ksh >= 1) return ksh * 100;
     return null;
   };
 
   const handlePay = async () => {
     const amountCents = getAmountCents();
     if (!amountCents) {
-      Alert.alert('Error', 'Please select or enter a valid amount (minimum KES 1).');
+      Alert.alert('Error', 'Please select or enter a whole number of shillings (minimum KES 1).');
       return;
     }
     if (!phone || phone.length < 9) {

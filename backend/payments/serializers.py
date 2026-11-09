@@ -20,6 +20,10 @@ class InitiatePaymentSerializer(serializers.Serializer):
             raise serializers.ValidationError("Minimum top-up is KES 1.")
         if value > 1000000:
             raise serializers.ValidationError("Maximum top-up is KES 10,000.")
+        if value % 100:
+            # M-Pesa only charges whole shillings, so a part-shilling amount
+            # would credit more than the payer is charged.
+            raise serializers.ValidationError("Top-ups must be whole shillings.")
         return value
 
 
