@@ -21,6 +21,7 @@ from .serializers import (InitiatePaymentSerializer,
                            ReviewCreditRequestSerializer)
 from core.permissions import IsParentOrStudent, IsAdminOrBursar, IsSchoolAdmin
 from core.pagination import paginate_queryset
+from core.params import int_param
 from .meal_report import (build_report, monthly_breakdown, render_csv,
                           render_pdf, report_filename)
 
@@ -41,6 +42,11 @@ def resolve_meal_account(user, meal_account_id=None):
 
     linked = user.linked_meal_accounts.select_related('student').order_by('id')
     if meal_account_id is not None:
+        try:
+            meal_account_id = int(meal_account_id)
+        except (TypeError, ValueError):
+            # Not an id at all: same answer as an id that isn't theirs.
+            raise MealAccount.DoesNotExist
         account = linked.filter(id=meal_account_id).first()
         if not account:
             raise MealAccount.DoesNotExist
@@ -528,7 +534,7 @@ class MonthlySpendingReportView(APIView):
             return Response({'error': 'Meal account not found.'},
                             status=status.HTTP_404_NOT_FOUND)
 
-        months_count = max(1, min(int(request.query_params.get('months', 3)), 12))
+        months_count = int_param(request, 'months', 3, 1, 12, clamp=True)
         monthly_data = monthly_breakdown(meal_account, months_count)
         for month in monthly_data:
             month.pop('month_start', None)
@@ -611,7 +617,7 @@ class BalanceTrendView(APIView):
             return Response({'error': 'Meal account not found.'},
                             status=status.HTTP_404_NOT_FOUND)
 
-        days = max(1, min(int(request.query_params.get('days', 30)), 90))
+        days = int_param(request, 'days', 30, 1, 90, clamp=True)
         today = date.today()
         current_balance = meal_account.balance_cents
 
