@@ -32,7 +32,6 @@ jobs:
       DB_PASSWORD: postgres
       DB_HOST: localhost
       DB_PORT: "5432"
-      PUSH_ENABLED: "False"
     defaults:
       run:
         working-directory: backend
