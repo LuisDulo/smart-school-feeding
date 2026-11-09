@@ -1,8 +1,10 @@
+import hmac
 import json
 import logging
+from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
 from django.db import transaction as db_transaction
-from django.http import HttpResponse, JsonResponse
+from django.http import Http404, HttpResponse, JsonResponse
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
@@ -117,24 +119,48 @@ class InitiatePaymentView(APIView):
                 status=status.HTTP_502_BAD_GATEWAY)
 
 
+def callback_metadata(stk_callback):
+    """The Name/Value items Daraja sends with a successful payment, as a dict."""
+    items = (stk_callback.get('CallbackMetadata') or {}).get('Item') or []
+    return {item.get('Name'): item.get('Value')
+            for item in items if isinstance(item, dict)}
+
+
+def charged_ksh(amount_cents):
+    """What stk_push actually asked M-Pesa to charge, in whole shillings."""
+    return max(1, amount_cents // 100)
+
+
 @csrf_exempt
-def mpesa_callback(request):
+def mpesa_callback(request, token):
     """
     Daraja posts payment result here after parent enters PIN.
-    POST /api/payments/callback/
-    No authentication — Daraja calls this directly.
+    POST /api/payments/callback/<DARAJA_CALLBACK_TOKEN>/
+
+    Daraja sends no credentials and does not sign its callbacks, so the
+    secret token in the URL is what tells a real callback from a forged
+    one. Anything else gets a plain 404. A success is then only credited
+    if its amount matches what was charged and its M-Pesa receipt has not
+    been used before.
     """
+    expected = settings.DARAJA_CALLBACK_TOKEN
+    if not expected or not hmac.compare_digest(token, expected):
+        raise Http404
     if request.method != 'POST':
         return JsonResponse({'error': 'Method not allowed'}, status=405)
 
     try:
         payload = json.loads(request.body)
-        logger.info(f"Daraja callback received: {payload}")
-
         stk_callback = payload.get('Body', {}).get('stkCallback', {})
         result_code = stk_callback.get('ResultCode')
         result_desc = stk_callback.get('ResultDesc', '')
         checkout_request_id = stk_callback.get('CheckoutRequestID', '')
+        # The payload holds the payer's phone number, so only the ids and
+        # result are logged. The full payload is kept on the transaction.
+        logger.info(f"Daraja callback received: {checkout_request_id} "
+                    f"result {result_code}")
+        if not checkout_request_id:
+            return JsonResponse({"ResultCode": 0, "ResultDesc": "Accepted"})
 
         # Lock the row for the whole decision + update so two callbacks for
         # the same CheckoutRequestID (Daraja retries on a slow/failed ack,
@@ -159,8 +185,27 @@ def mpesa_callback(request):
             # Store raw callback for audit trail
             tx.callback_payload = payload
 
+            problem = None
             if result_code == 0:
+                metadata = callback_metadata(stk_callback)
+                receipt = str(metadata.get('MpesaReceiptNumber') or '').strip()
+                if metadata.get('Amount') != charged_ksh(tx.amount_cents):
+                    problem = (f"amount {metadata.get('Amount')} does not match "
+                               f"the KES {charged_ksh(tx.amount_cents)} charged")
+                elif not receipt:
+                    problem = 'no M-Pesa receipt number'
+                elif PaymentTransaction.objects.filter(
+                        mpesa_receipt=receipt).exists():
+                    problem = f'receipt {receipt} was already credited'
+
+            if problem:
+                tx.status = 'failed'
+                tx.save()
+                logger.warning(
+                    f"Refused callback for {checkout_request_id}: {problem}")
+            elif result_code == 0:
                 tx.status = 'confirmed'
+                tx.mpesa_receipt = receipt
                 tx.save()
                 meal_account = tx.meal_account
                 meal_account.balance_cents += tx.amount_cents

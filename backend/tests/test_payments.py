@@ -1,4 +1,4 @@
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from meals.models import School, User, MealAccount, PaymentTransaction
 from unittest.mock import patch, MagicMock
 import bcrypt
@@ -68,6 +68,7 @@ class TestPaymentInitiate(TestCase):
         self.assertEqual(response.status_code, 400)
 
 
+@override_settings(DARAJA_CALLBACK_TOKEN='test-token')
 class TestMpesaCallback(TestCase):
     def setUp(self):
         self.school = School.objects.create(
@@ -105,7 +106,7 @@ class TestMpesaCallback(TestCase):
             }
         }
         response = self.client.post(
-            '/api/payments/callback/',
+            '/api/payments/callback/test-token/',
             json.dumps(payload),
             content_type='application/json'
         )
@@ -126,7 +127,7 @@ class TestMpesaCallback(TestCase):
             }
         }
         response = self.client.post(
-            '/api/payments/callback/',
+            '/api/payments/callback/test-token/',
             json.dumps(payload),
             content_type='application/json'
         )

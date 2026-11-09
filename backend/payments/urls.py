@@ -10,7 +10,7 @@ from .views import (InitiatePaymentView, mpesa_callback,
 
 urlpatterns = [
     path('initiate/', InitiatePaymentView.as_view(), name='initiate-payment'),
-    path('callback/', mpesa_callback, name='mpesa-callback'),
+    path('callback/<str:token>/', mpesa_callback, name='mpesa-callback'),
     path('status/<int:transaction_id>/', PaymentStatusView.as_view(), name='payment-status'),
     path('history/', PaymentHistoryView.as_view(), name='payment-history'),
     path('balance/', MealBalanceView.as_view(), name='meal-balance'),

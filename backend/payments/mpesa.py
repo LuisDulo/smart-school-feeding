@@ -15,7 +15,11 @@ class MPesaService:
         self.consumer_secret = os.getenv('DARAJA_CONSUMER_SECRET')
         self.shortcode = os.getenv('DARAJA_SHORTCODE')
         self.passkey = os.getenv('DARAJA_PASSKEY')
-        self.callback_url = os.getenv('DARAJA_CALLBACK_URL')
+        # DARAJA_CALLBACK_URL is the public address of /api/payments/callback/;
+        # the secret token is appended so only Daraja knows the full URL.
+        base = (os.getenv('DARAJA_CALLBACK_URL') or '').rstrip('/')
+        token = os.getenv('DARAJA_CALLBACK_TOKEN', '')
+        self.callback_url = f"{base}/{token}/" if base and token else base
 
     def get_access_token(self):
         """Get OAuth2 bearer token from Daraja."""

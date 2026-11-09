@@ -201,3 +201,8 @@ PUSH_ENABLED = os.getenv('PUSH_ENABLED', 'True') == 'True'
 PUSH_SYNC = False
 # Only needed if "Enhanced push security" is switched on in the Expo dashboard.
 EXPO_ACCESS_TOKEN = os.getenv('EXPO_ACCESS_TOKEN', '')
+
+# Secret path segment for the M-Pesa callback. Daraja does not sign its
+# callbacks, so without it anyone could post a fake success. Leave it empty
+# and every callback is refused.
+DARAJA_CALLBACK_TOKEN = os.getenv('DARAJA_CALLBACK_TOKEN', '')
