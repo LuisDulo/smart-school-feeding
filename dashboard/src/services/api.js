@@ -13,10 +13,43 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Access tokens are short-lived. On a 401, trade the refresh token for a new
+// pair once and retry the request. Refresh tokens rotate, so parallel 401s
+// share one refresh call instead of each spending the same token.
+let refreshing = null;
+
+function refreshTokens() {
+  const refresh = localStorage.getItem('refresh_token');
+  if (!refresh) return Promise.reject(new Error('No refresh token'));
+  if (!refreshing) {
+    refreshing = axios.post(`${BASE_URL}/auth/token/refresh/`, { refresh })
+      .then(({ data }) => {
+        localStorage.setItem('access_token', data.access);
+        localStorage.setItem('refresh_token', data.refresh);
+        return data.access;
+      })
+      .finally(() => { refreshing = null; });
+  }
+  return refreshing;
+}
+
+const isLogin = (config) => (config?.url || '').startsWith('/auth/login');
+
 api.interceptors.response.use(
   (res) => res,
-  (err) => {
-    if (err.response?.status === 401) {
+  async (err) => {
+    const original = err.config;
+    if (err.response?.status === 401 && original && !isLogin(original)) {
+      if (!original._retried) {
+        original._retried = true;
+        try {
+          const access = await refreshTokens();
+          original.headers.Authorization = `Bearer ${access}`;
+          return api(original);
+        } catch (refreshError) {
+          // The session is over: fall through to logging out.
+        }
+      }
       localStorage.clear();
       window.location.href = '/';
     }

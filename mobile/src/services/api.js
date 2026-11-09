@@ -24,6 +24,56 @@ api.interceptors.request.use(async (config) => {
   return config;
 });
 
+// Access tokens are short-lived. On a 401, trade the refresh token for a new
+// pair once and retry the request. Refresh tokens rotate, so parallel 401s
+// share one refresh call instead of each spending the same token. If the
+// refresh fails the session is over, and AuthContext is told to log out.
+let refreshing = null;
+let onSessionExpired = () => {};
+
+export function setOnSessionExpired(callback) {
+  onSessionExpired = callback;
+}
+
+async function refreshTokens() {
+  const refresh = await AsyncStorage.getItem('refresh_token');
+  if (!refresh) throw new Error('No refresh token');
+  if (!refreshing) {
+    refreshing = axios.post(`${BASE_URL}/auth/token/refresh/`, { refresh }, { timeout: 10000 })
+      .then(async ({ data }) => {
+        await AsyncStorage.setItem('access_token', data.access);
+        await AsyncStorage.setItem('refresh_token', data.refresh);
+        return data.access;
+      })
+      .finally(() => { refreshing = null; });
+  }
+  return refreshing;
+}
+
+const isPublicAuthCall = (config) =>
+  ['/auth/login', '/auth/register'].some((path) => (config?.url || '').startsWith(path));
+
+api.interceptors.response.use(
+  (res) => res,
+  async (err) => {
+    const original = err.config;
+    if (err.response?.status === 401 && original && !isPublicAuthCall(original)) {
+      if (!original._retried) {
+        original._retried = true;
+        try {
+          const access = await refreshTokens();
+          original.headers.Authorization = `Bearer ${access}`;
+          return api(original);
+        } catch (refreshError) {
+          // Fall through to ending the session.
+        }
+      }
+      onSessionExpired();
+    }
+    return Promise.reject(err);
+  }
+);
+
 export const authAPI = {
   register: (data) => api.post('/auth/register/', data),
   login: (data) => api.post('/auth/login/', data),
@@ -81,6 +131,9 @@ export default api;
 // plain link. The file is checked after downloading because an HTTP error body
 // (JSON) would otherwise be saved as if it were the report.
 export async function downloadMealReport({ months, mealAccountId, fileFormat }) {
+  // The download task bypasses axios, so make one cheap API call first: if
+  // the access token has expired, the interceptor refreshes it.
+  await api.get('/auth/profile/');
   const token = await AsyncStorage.getItem('access_token');
   const query = new URLSearchParams({
     months: String(months || 3),
