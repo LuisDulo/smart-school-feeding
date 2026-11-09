@@ -9,6 +9,7 @@ from meals.models import (PaymentTransaction, MealDistributionEvent,
                            AnomalyFlag, User, MealAccount,
                            DemandForecast)
 from core.permissions import IsAdminOrBursar
+from core.params import int_param
 
 
 class PaymentReportCSVView(APIView):
@@ -20,7 +21,7 @@ class PaymentReportCSVView(APIView):
 
     def get(self, request):
         user = request.user
-        days = int(request.query_params.get('days', 30))
+        days = int_param(request, 'days', 30, 1, 365)
         since = date.today() - timedelta(days=days)
 
         transactions = PaymentTransaction.objects.filter(
@@ -67,7 +68,7 @@ class MealDistributionReportCSVView(APIView):
 
     def get(self, request):
         user = request.user
-        days = int(request.query_params.get('days', 30))
+        days = int_param(request, 'days', 30, 1, 365)
         since = date.today() - timedelta(days=days)
 
         events = MealDistributionEvent.objects.filter(
@@ -170,7 +171,7 @@ class TermSummaryView(APIView):
     def get(self, request):
         user = request.user
         school = user.school
-        days = int(request.query_params.get('days', 90))
+        days = int_param(request, 'days', 90, 1, 365)
         since = date.today() - timedelta(days=days)
 
         total_students = User.objects.filter(

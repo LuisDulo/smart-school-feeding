@@ -12,6 +12,7 @@ from meals.models import (
 from core.permissions import IsSuperAdmin
 from .password_rules import password_problems
 from core.pagination import paginate_queryset
+from core.params import int_param
 
 logger = logging.getLogger(__name__)
 
@@ -615,7 +616,7 @@ class SuperAdminAnalyticsView(APIView):
     def get(self, request):
         schools = School.objects.exclude(name=WEBMASTERS_KENYA)
         today = date.today()
-        days = int(request.query_params.get('days', 30))
+        days = int_param(request, 'days', 30, 1, 365)
         since = today - timedelta(days=days)
 
         # Weekly collections per school
@@ -717,7 +718,7 @@ class SuperAdminReportView(APIView):
         from django.http import HttpResponse
 
         schools = School.objects.exclude(name=WEBMASTERS_KENYA)
-        days = int(request.query_params.get('days', 90))
+        days = int_param(request, 'days', 90, 1, 365)
         since = date.today() - timedelta(days=days)
 
         if report_type == 'payments':
