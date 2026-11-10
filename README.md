@@ -4,6 +4,8 @@ A school meal-management platform: parents top up a child's meal balance by M-Pe
 
 Capstone project, BSc Informatics and Computer Science, Strathmore University. Partner organisation: Webmasters Kenya.
 
+**Screenshots:** every dashboard page for each role, and the parent's meal report, are in [docs/SCREENSHOTS.md](docs/SCREENSHOTS.md) (also as a [Word document](docs/Smart_School_Feeding_Updated_Screenshots.docx)).
+
 ## Repository structure
 
 | Folder | Responsibility |
