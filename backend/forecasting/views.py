@@ -412,8 +412,13 @@ def _risk_features_for(account, today, meal_cost_cents=5000):
         meal_account=account, status='confirmed'
     ).aggregate(avg=Avg('amount_cents'))['avg'] or 0
 
-    daily_cost = (avg_meals_pw / 5) * meal_cost_cents
-    days_rem = account.balance_cents / daily_cost if daily_cost > 0 else 999
+    # A student with no recent meals is usually one who has already run out
+    # and is being refused, so the "no spending, balance lasts forever"
+    # reading (999 days) would mark exactly the wrong students as safe.
+    # Without meal history, assume one meal per school day instead.
+    meals_per_day = avg_meals_pw / 5 if avg_meals_pw > 0 else 1
+    daily_cost = meals_per_day * meal_cost_cents
+    days_rem = max(account.balance_cents, 0) / daily_cost
 
     vector = np.array([[
         account.balance_cents,
