@@ -127,7 +127,7 @@ class AnomalyReportCSVView(APIView):
             'Flagged At', 'Student Name',
             'Amount (KES)', 'M-Pesa Reference',
             'Anomaly Score', 'Severity',
-            'Reviewed', 'Reviewed By', 'Review Notes'
+            'Reviewed', 'Decision', 'Reviewed By', 'Review Notes'
         ])
 
         for flag in flags:
@@ -147,6 +147,7 @@ class AnomalyReportCSVView(APIView):
                 flag.anomaly_score,
                 severity,
                 'YES' if flag.reviewed else 'NO',
+                flag.get_decision_display() or '-',
                 flag.reviewed_by.full_name
                     if flag.reviewed_by else '-',
                 flag.review_notes or '-'

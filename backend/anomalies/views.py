@@ -228,6 +228,7 @@ class ReviewFlagView(APIView):
 
         flag.reviewed = True
         flag.reviewed_by = reviewer
+        flag.decision = serializer.validated_data['action']
         flag.review_notes = serializer.validated_data['review_notes']
         flag.reviewed_at = timezone.now()
         flag.save()
@@ -381,6 +382,7 @@ class ReviewMealFlagView(APIView):
 
         flag.reviewed = True
         flag.reviewed_by = request.user
+        flag.decision = serializer.validated_data['action']
         flag.review_notes = serializer.validated_data['review_notes']
         flag.reviewed_at = timezone.now()
         flag.save()
