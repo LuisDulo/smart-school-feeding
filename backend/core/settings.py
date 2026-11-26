@@ -152,7 +152,6 @@ REST_FRAMEWORK = {
         'user': '2000/min',
         # Brute-force protection on the credential endpoints.
         'login': '10/min',
-        'register': '20/hour',
         'refresh': '30/min',
     },
     # Set NUM_PROXIES (e.g. 1 behind ngrok/nginx) so throttling keys on the
