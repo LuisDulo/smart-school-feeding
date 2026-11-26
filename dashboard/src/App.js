@@ -109,13 +109,19 @@ const PAGES = {
 
 function AppInner() {
   const { user } = useAuth();
+  if (!user) return <LoginPage />;
+  // Keyed by the signed-in user so a new sign-in starts on the dashboard
+  // instead of inheriting a page the previous user had open, which the new
+  // role may not be allowed to see.
+  return <SignedInApp key={`${user.id}:${user.role}`} user={user} />;
+}
+
+function SignedInApp({ user }) {
   const [page, setPage] = useState('dashboard');
 
   // Super admin state
   const [saPage, setSaPage] = useState('overview');
   const [drillDownSchool, setDrillDownSchool] = useState(null);
-
-  if (!user) return <LoginPage />;
 
   // Super admin gets a completely separate layout — a different sidebar,
   // network-wide pages, and no access to any single school's admin pages.
