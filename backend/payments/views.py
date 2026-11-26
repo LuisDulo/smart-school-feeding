@@ -218,9 +218,13 @@ def mpesa_callback(request, token):
                 tx.status = 'confirmed'
                 tx.mpesa_receipt = receipt
                 tx.save()
-                meal_account = tx.meal_account
+                # Lock the account too, so a meal served at the same moment
+                # cannot overwrite this top-up with a stale balance.
+                meal_account = MealAccount.objects.select_for_update().get(
+                    pk=tx.meal_account_id)
                 meal_account.balance_cents += tx.amount_cents
-                meal_account.save()
+                meal_account.save(
+                    update_fields=['balance_cents', 'last_updated'])
                 logger.info(
                     f"Payment confirmed: {checkout_request_id} "
                     f"KES {tx.amount_cents/100} → account {meal_account.id}")
@@ -499,6 +503,14 @@ class ReviewCreditRequestView(APIView):
         action = serializer.validated_data['action']
 
         with db_transaction.atomic():
+            # Re-read the request under a lock: two admins reviewing it at
+            # once must not both approve it and raise the limit twice.
+            credit_request = CreditRequest.objects.select_for_update().get(
+                pk=credit_request.pk)
+            if credit_request.status != 'pending':
+                return Response(
+                    {'error': 'This request has already been reviewed.'},
+                    status=status.HTTP_409_CONFLICT)
             credit_request.status = action
             credit_request.review_notes = serializer.validated_data['review_notes']
             credit_request.reviewed_by = request.user
@@ -506,9 +518,11 @@ class ReviewCreditRequestView(APIView):
             credit_request.save()
 
             if action == 'approved':
-                meal_account = credit_request.meal_account
+                meal_account = MealAccount.objects.select_for_update().get(
+                    pk=credit_request.meal_account_id)
                 meal_account.credit_limit_cents += credit_request.requested_amount_cents
-                meal_account.save()
+                meal_account.save(
+                    update_fields=['credit_limit_cents', 'last_updated'])
 
         return Response({
             'message': f'Credit request {action}.',
