@@ -10,6 +10,7 @@ from meals.models import (PaymentTransaction, MealDistributionEvent,
                            DemandForecast)
 from core.permissions import IsAdminOrBursar
 from core.params import int_param
+from .severity import payment_severity
 
 
 class PaymentReportCSVView(APIView):
@@ -127,17 +128,12 @@ class AnomalyReportCSVView(APIView):
             'Flagged At', 'Student Name',
             'Amount (KES)', 'M-Pesa Reference',
             'Anomaly Score', 'Severity',
-            'Reviewed', 'Reviewed By', 'Review Notes'
+            'Reviewed', 'Decision', 'Reviewed By', 'Review Notes'
         ])
 
         for flag in flags:
             tx = flag.transaction
-            if flag.anomaly_score >= 0.80:
-                severity = 'HIGH'
-            elif flag.anomaly_score >= 0.65:
-                severity = 'MEDIUM'
-            else:
-                severity = 'LOW'
+            severity = payment_severity(flag.anomaly_score)
 
             writer.writerow([
                 flag.flagged_at.strftime('%Y-%m-%d %H:%M'),
@@ -147,6 +143,7 @@ class AnomalyReportCSVView(APIView):
                 flag.anomaly_score,
                 severity,
                 'YES' if flag.reviewed else 'NO',
+                flag.get_decision_display() or '-',
                 flag.reviewed_by.full_name
                     if flag.reviewed_by else '-',
                 flag.review_notes or '-'

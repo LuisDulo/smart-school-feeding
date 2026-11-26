@@ -763,12 +763,8 @@ class BalanceRiskScoreView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        import os
-        import joblib
-        import numpy as np
-        from datetime import date, timedelta
-        from django.db.models import Avg
-        from meals.models import MealDistributionEvent
+        from datetime import date
+        from forecasting import views as forecasting
 
         meal_account_id = request.query_params.get('meal_account_id')
         try:
@@ -777,13 +773,7 @@ class BalanceRiskScoreView(APIView):
             return Response({'error': 'Meal account not found.'},
                             status=status.HTTP_404_NOT_FOUND)
 
-        BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        ML_DIR = os.path.join(BASE_DIR, '..', 'ml', 'models')
-
-        try:
-            clf = joblib.load(os.path.join(ML_DIR, 'balance_risk_classifier.joblib'))
-            scaler = joblib.load(os.path.join(ML_DIR, 'scaler_risk.joblib'))
-        except Exception:
+        if not forecasting.RISK_LOADED:
             balance_ksh = meal_account.balance_cents / 100
             days_remaining = balance_ksh / 50  # KES 50/day
             at_risk = days_remaining < 7
@@ -797,42 +787,13 @@ class BalanceRiskScoreView(APIView):
                 'message': f'Balance estimated to last ~{round(days_remaining)} days',
             })
 
-        today = date.today()
-        meal_cost = 5000
-
-        last_4w = today - timedelta(weeks=4)
-        meals_4w = MealDistributionEvent.objects.filter(
-            meal_account=meal_account, meal_date__gte=last_4w).count()
-        avg_meals_pw = meals_4w / 4
-
-        last_week = today - timedelta(weeks=1)
-        meals_lw = MealDistributionEvent.objects.filter(
-            meal_account=meal_account, meal_date__gte=last_week).count()
-
-        last_tx = PaymentTransaction.objects.filter(
-            meal_account=meal_account, status='confirmed'
-        ).order_by('-created_at').first()
-        days_since = (today - last_tx.created_at.date()).days if last_tx else 60
-
-        last_30 = today - timedelta(days=30)
-        topups = PaymentTransaction.objects.filter(
-            meal_account=meal_account, status='confirmed',
-            created_at__date__gte=last_30).count()
-
-        avg_topup = PaymentTransaction.objects.filter(
-            meal_account=meal_account, status='confirmed'
-        ).aggregate(avg=Avg('amount_cents'))['avg'] or 0
-
-        daily_cost = (avg_meals_pw / 5) * meal_cost
-        days_rem = meal_account.balance_cents / daily_cost if daily_cost > 0 else 999
-
-        features = np.array([[
-            meal_account.balance_cents, avg_meals_pw, meals_lw,
-            min(days_since, 90), topups, avg_topup / 100, days_rem,
-        ]])
-        scaled = scaler.transform(features)
-        prediction = int(clf.predict(scaled)[0])
-        probability = float(clf.predict_proba(scaled)[0][1])
+        # Same features and models as the dashboard's Balance Risk page, so
+        # the parent's warning and the school's list always agree.
+        features, display = forecasting._risk_features_for(meal_account, date.today())
+        days_rem = display['estimated_days_remaining']
+        scaled = forecasting.risk_scaler.transform(features)
+        prediction = int(forecasting.risk_clf.predict(scaled)[0])
+        probability = float(forecasting.risk_clf.predict_proba(scaled)[0][1])
 
         return Response({
             'student_name': meal_account.student.full_name,

@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from .severity import payment_severity, meal_severity
 from meals.models import AnomalyFlag, MealAnomalyFlag, PaymentTransaction
 
 
@@ -19,14 +20,15 @@ class AnomalyTransactionSerializer(serializers.ModelSerializer):
 
 class AnomalyFlagSerializer(serializers.ModelSerializer):
     transaction = AnomalyTransactionSerializer(read_only=True)
+    decision_label = serializers.CharField(source='get_decision_display', read_only=True)
     reviewed_by_name = serializers.SerializerMethodField()
     severity = serializers.SerializerMethodField()
 
     class Meta:
         model = AnomalyFlag
         fields = ['id', 'transaction', 'anomaly_score',
-                  'flagged_at', 'reviewed', 'reviewed_by_name',
-                  'review_notes', 'reviewed_at', 'severity']
+                  'flagged_at', 'reviewed', 'reviewed_by_name', 'decision',
+                  'decision_label', 'review_notes', 'reviewed_at', 'severity']
 
     def get_reviewed_by_name(self, obj):
         if obj.reviewed_by:
@@ -34,11 +36,7 @@ class AnomalyFlagSerializer(serializers.ModelSerializer):
         return None
 
     def get_severity(self, obj):
-        if obj.anomaly_score >= 0.80:
-            return 'HIGH'
-        elif obj.anomaly_score >= 0.65:
-            return 'MEDIUM'
-        return 'LOW'
+        return payment_severity(obj.anomaly_score)
 
 
 class ReviewFlagSerializer(serializers.Serializer):
@@ -50,6 +48,7 @@ class ReviewFlagSerializer(serializers.Serializer):
 
 class MealAnomalyFlagSerializer(serializers.ModelSerializer):
     kind_label = serializers.CharField(source='get_kind_display', read_only=True)
+    decision_label = serializers.CharField(source='get_decision_display', read_only=True)
     student_name = serializers.SerializerMethodField()
     staff_name = serializers.SerializerMethodField()
     meal = serializers.SerializerMethodField()
@@ -60,8 +59,8 @@ class MealAnomalyFlagSerializer(serializers.ModelSerializer):
         model = MealAnomalyFlag
         fields = ['id', 'kind', 'kind_label', 'student_name', 'staff_name',
                   'meal', 'reasons', 'anomaly_score', 'severity', 'flag_date',
-                  'flagged_at', 'reviewed', 'reviewed_by_name',
-                  'review_notes', 'reviewed_at', 'is_demo']
+                  'flagged_at', 'reviewed', 'reviewed_by_name', 'decision',
+                  'decision_label', 'review_notes', 'reviewed_at', 'is_demo']
 
     def get_student_name(self, obj):
         return obj.meal_account.student.full_name if obj.meal_account else None
@@ -85,8 +84,4 @@ class MealAnomalyFlagSerializer(serializers.ModelSerializer):
         return obj.reviewed_by.full_name if obj.reviewed_by else None
 
     def get_severity(self, obj):
-        if obj.anomaly_score >= 0.80:
-            return 'HIGH'
-        if obj.anomaly_score >= 0.65:
-            return 'MEDIUM'
-        return 'LOW'
+        return meal_severity(obj.anomaly_score)

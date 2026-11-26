@@ -7,8 +7,9 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from meals.models import (
     School, User, MealAccount, PaymentTransaction,
-    MealDistributionEvent, AnomalyFlag, DemandForecast
+    MealDistributionEvent, AnomalyFlag, MealAnomalyFlag, DemandForecast
 )
+from anomalies.severity import meal_filter, meal_severity, payment_filter, payment_severity
 from core.permissions import IsSuperAdmin
 from .password_rules import password_problems
 from core.pagination import paginate_queryset
@@ -539,6 +540,8 @@ class SuperAdminAnomalyView(APIView):
     permission_classes = [IsAuthenticated, IsSuperAdmin]
 
     def get(self, request):
+        if request.query_params.get('type') == 'meal':
+            return self.meal_flags(request)
         schools = School.objects.exclude(name=WEBMASTERS_KENYA)
         flags = AnomalyFlag.objects.filter(
             transaction__meal_account__student__school__in=schools
@@ -561,24 +564,17 @@ class SuperAdminAnomalyView(APIView):
         # Filtered at the ORM level, before pagination, so matches
         # aren't silently lost past the page slice.
         sev_filter = request.query_params.get('severity')
-        if sev_filter == 'HIGH':
-            flags = flags.filter(anomaly_score__gte=0.80)
-        elif sev_filter == 'MEDIUM':
-            flags = flags.filter(anomaly_score__gte=0.65,
-                                  anomaly_score__lt=0.80)
-        elif sev_filter == 'LOW':
-            flags = flags.filter(anomaly_score__lt=0.65)
+        flags = flags.filter(payment_filter(sev_filter))
 
         pending = flags.filter(reviewed=False).count()
-        high = flags.filter(anomaly_score__gte=0.80).count()
+        high = flags.filter(payment_filter('HIGH')).count()
 
         page, meta = paginate_queryset(request, flags, default_limit=200)
 
         result = []
         for f in page:
             score = f.anomaly_score
-            severity = 'HIGH' if score >= 0.80 else \
-                       'MEDIUM' if score >= 0.65 else 'LOW'
+            severity = payment_severity(score)
             result.append({
                 'id': f.id,
                 'school': f.transaction.meal_account
@@ -595,7 +591,56 @@ class SuperAdminAnomalyView(APIView):
                 'reviewed': f.reviewed,
                 'reviewed_by': f.reviewed_by.full_name
                     if f.reviewed_by else None,
+                'decision_label': f.get_decision_display(),
             })
+
+        return Response({
+            'total': meta['count'],
+            'pending': pending,
+            'high_severity': high,
+            'flags': result,
+            **meta,
+        })
+
+    def meal_flags(self, request):
+        """Meal-serving flags (unusual meals and repeated refused serves)
+        across every school. GET /api/superadmin/anomalies/?type=meal"""
+        schools = School.objects.exclude(name=WEBMASTERS_KENYA)
+        flags = MealAnomalyFlag.objects.filter(school__in=schools).select_related(
+            'school', 'meal_account__student', 'recorded_by', 'reviewed_by',
+            'meal_event').order_by('-flagged_at')
+
+        school_id = request.query_params.get('school_id')
+        if school_id:
+            flags = flags.filter(school_id=school_id)
+        reviewed = request.query_params.get('reviewed')
+        if reviewed == 'false':
+            flags = flags.filter(reviewed=False)
+        elif reviewed == 'true':
+            flags = flags.filter(reviewed=True)
+        flags = flags.filter(meal_filter(request.query_params.get('severity')))
+
+        pending = flags.filter(reviewed=False).count()
+        high = flags.filter(meal_filter('HIGH')).count()
+        page, meta = paginate_queryset(request, flags, default_limit=200)
+
+        result = [{
+            'id': f.id,
+            'school': f.school.name,
+            'school_id': f.school_id,
+            'student': f.meal_account.student.full_name if f.meal_account else None,
+            'staff': f.recorded_by.full_name if f.recorded_by else None,
+            'kind': f.kind,
+            'kind_label': f.get_kind_display(),
+            'reasons': f.reasons,
+            'amount_ksh': f.meal_event.amount_cents / 100 if f.meal_event else None,
+            'anomaly_score': f.anomaly_score,
+            'severity': meal_severity(f.anomaly_score),
+            'flagged_at': str(f.flagged_at),
+            'reviewed': f.reviewed,
+            'reviewed_by': f.reviewed_by.full_name if f.reviewed_by else None,
+            'decision_label': f.get_decision_display(),
+        } for f in page]
 
         return Response({
             'total': meta['count'],

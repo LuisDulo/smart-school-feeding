@@ -402,6 +402,13 @@ class TestAnomalyDetection(TestCase):
         self.assertTrue(self.flag.reviewed)
         self.assertEqual(
             self.flag.review_notes, 'Verified with parent')
+        self.assertEqual(self.flag.decision, 'legitimate')
+        listed = self.client.get(
+            '/api/anomalies/flags/?reviewed=true',
+            HTTP_AUTHORIZATION=f'Bearer {self.token}').json()['flags'][0]
+        self.assertEqual(
+            (listed['decision'], listed['decision_label']),
+            ('legitimate', 'Legitimate'))
 
     def test_double_review_returns_409(self):
         self.flag.reviewed = True
