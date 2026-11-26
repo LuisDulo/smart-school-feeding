@@ -8,6 +8,8 @@ export default function SAAnomalies() {
   const [schoolId, setSchoolId] = useState('');
   const [severity, setSeverity] = useState('');
   const [reviewed, setReviewed] = useState('false');
+  const [type, setType] = useState('payment');
+  const isMeal = type === 'meal';
 
   useEffect(() => {
     superAdminAPI.schools().then(r => setSchools(r.data.schools)).catch(() => {});
@@ -19,22 +21,32 @@ export default function SAAnomalies() {
     if (schoolId) params.school_id = schoolId;
     if (severity) params.severity = severity;
     if (reviewed) params.reviewed = reviewed;
+    if (isMeal) params.type = 'meal';
     superAdminAPI.anomalies(params)
       .then(r => setData(r.data))
       .catch(console.error)
       .finally(() => setLoading(false));
   };
 
-  useEffect(load, [schoolId, severity, reviewed]);
+  useEffect(load, [schoolId, severity, reviewed, type]);
 
   return (
     <div style={styles.page}>
       <div style={styles.topbar}>
         <h1 style={styles.title}>Anomaly Flags</h1>
-        <p style={styles.subtitle}>Suspicious transactions across the network</p>
+        <p style={styles.subtitle}>Suspicious top-ups and meals across the network</p>
       </div>
 
       <div style={styles.content}>
+        <div style={styles.tabs}>
+          {[['payment', 'Top-ups'], ['meal', 'Meal Serving']].map(([key, label]) => (
+            <button key={key} onClick={() => setType(key)}
+              style={type === key ? styles.tabActive : styles.tab}>
+              {label}
+            </button>
+          ))}
+        </div>
+
         <div style={styles.statsRow}>
           <div style={styles.statCard}>
             <p style={styles.statVal}>{data.total}</p>
@@ -73,7 +85,10 @@ export default function SAAnomalies() {
             <table style={styles.table}>
               <thead>
                 <tr style={styles.thead}>
-                  {['School', 'Student', 'Amount (KES)', 'M-Pesa Ref', 'Score', 'Severity', 'Status'].map(h => (
+                  {(isMeal
+                    ? ['School', 'Student / Staff', 'Kind', 'Reason', 'Score', 'Severity', 'Status']
+                    : ['School', 'Student', 'Amount (KES)', 'M-Pesa Ref', 'Score', 'Severity', 'Status']
+                  ).map(h => (
                     <th key={h} style={styles.th}>{h}</th>
                   ))}
                 </tr>
@@ -86,11 +101,21 @@ export default function SAAnomalies() {
                 ) : data.flags.map((f, i) => (
                   <tr key={f.id} style={i % 2 === 0 ? {} : { background: '#F9FAFB' }}>
                     <td style={{ ...styles.td, fontWeight: 700, color: '#1A3A5C' }}>{f.school}</td>
-                    <td style={styles.td}>{f.student}</td>
-                    <td style={{ ...styles.td, fontWeight: 700 }}>
-                      {f.amount_ksh?.toLocaleString('en-KE', { minimumFractionDigits: 2 })}
-                    </td>
-                    <td style={styles.td}>{f.mpesa_ref || '—'}</td>
+                    {isMeal ? (
+                      <>
+                        <td style={styles.td}>{f.student || f.staff || '—'}</td>
+                        <td style={styles.td}>{f.kind_label}</td>
+                        <td style={{ ...styles.td, maxWidth: 320 }}>{(f.reasons || []).join('; ')}</td>
+                      </>
+                    ) : (
+                      <>
+                        <td style={styles.td}>{f.student}</td>
+                        <td style={{ ...styles.td, fontWeight: 700 }}>
+                          {f.amount_ksh?.toLocaleString('en-KE', { minimumFractionDigits: 2 })}
+                        </td>
+                        <td style={styles.td}>{f.mpesa_ref || '—'}</td>
+                      </>
+                    )}
                     <td style={styles.td}>{f.anomaly_score}</td>
                     <td style={styles.td}>
                       <span style={
@@ -103,7 +128,9 @@ export default function SAAnomalies() {
                     </td>
                     <td style={styles.td}>
                       {f.reviewed ? (
-                        <span style={styles.badgeGreen}>Reviewed{f.reviewed_by ? ` by ${f.reviewed_by}` : ''}</span>
+                        <span style={f.decision_label === 'Confirmed irregular' ? styles.badgeRed : styles.badgeGreen}>
+                          {f.decision_label || 'Reviewed'}{f.reviewed_by ? ` by ${f.reviewed_by}` : ''}
+                        </span>
                       ) : (
                         <span style={styles.badgeAmber}>Pending</span>
                       )}
@@ -132,6 +159,11 @@ const styles = {
   statVal: { fontSize: 24, fontWeight: 700, margin: '0 0 4px', color: '#1A3A5C' },
   statLabel: { fontSize: 11, color: '#6B7280', margin: 0 },
   filters: { display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' },
+  tabs: { display: 'flex', gap: 8, marginBottom: 20 },
+  tab: { border: '1px solid #E5E7EB', background: '#fff', color: '#374151', borderRadius: 20,
+         padding: '8px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer' },
+  tabActive: { border: '1px solid #1A3A5C', background: '#1A3A5C', color: '#fff', borderRadius: 20,
+               padding: '8px 18px', fontSize: 13, fontWeight: 600, cursor: 'pointer' },
   select: { border: '1px solid #E5E7EB', borderRadius: 8, padding: '10px 14px',
             fontSize: 13, background: '#fff', outline: 'none' },
   tableCard: { background: '#fff', borderRadius: 12, overflow: 'hidden',
