@@ -242,6 +242,14 @@ class DemandForecast(models.Model):
         unique_together = ('school', 'forecast_date')
 
 
+# What a reviewer concluded about a flag; blank until it is reviewed. Kept so
+# confirmed irregularities can be counted and used as labels for retraining.
+REVIEW_DECISIONS = [
+    ('legitimate', 'Legitimate'),
+    ('confirmed_irregular', 'Confirmed irregular'),
+]
+
+
 class AnomalyFlag(models.Model):
     transaction = models.OneToOneField(
         PaymentTransaction, on_delete=models.CASCADE,
@@ -255,6 +263,8 @@ class AnomalyFlag(models.Model):
     anomaly_score = models.FloatField()
     flagged_at = models.DateTimeField(auto_now_add=True)
     reviewed = models.BooleanField(default=False)
+    decision = models.CharField(max_length=20, choices=REVIEW_DECISIONS,
+                                blank=True, default='')
     review_notes = models.TextField(blank=True, default='')
     reviewed_at = models.DateTimeField(null=True, blank=True)
 
@@ -509,6 +519,8 @@ class MealAnomalyFlag(models.Model):
     reviewed_by = models.ForeignKey(
         User, on_delete=models.SET_NULL, null=True, blank=True,
         related_name='reviewed_meal_flags')
+    decision = models.CharField(max_length=20, choices=REVIEW_DECISIONS,
+                                blank=True, default='')
     review_notes = models.TextField(blank=True, default='')
     reviewed_at = models.DateTimeField(null=True, blank=True)
 

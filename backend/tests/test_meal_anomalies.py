@@ -248,7 +248,10 @@ class TestMealFlagApi(MealAnomalyBase):
         flag.refresh_from_db()
         self.assertTrue(flag.reviewed)
         self.assertEqual((flag.reviewed_by_id, flag.review_notes), (self.admin.id, 'checked CCTV'))
+        self.assertEqual(flag.decision, 'confirmed_irregular')
         self.assertEqual(self.post(url, self.admin, {'action': 'legitimate'}).status_code, 409)
+        flag.refresh_from_db()
+        self.assertEqual(flag.decision, 'confirmed_irregular')  # a refused second review changes nothing
 
     def test_review_validates_the_action(self):
         flag = self.flag_for(self.accounts[0])

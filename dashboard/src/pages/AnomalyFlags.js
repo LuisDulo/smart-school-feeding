@@ -273,9 +273,11 @@ export default function AnomalyFlags() {
                 )}
                 {flag.reviewed && (
                   <span style={{
-                    ...styles.flagDetail, color: '#1A6E3C'
+                    ...styles.flagDetail,
+                    color: flag.decision === 'confirmed_irregular' ? '#C0392B' : '#1A6E3C'
                   }}>
                     <FiCheckCircle style={styles.detailIcon} />
+                    {flag.decision_label ? `${flag.decision_label} · ` : ''}
                     Reviewed by {flag.reviewed_by_name}
                     {flag.review_notes &&
                       ` · ${flag.review_notes}`}
