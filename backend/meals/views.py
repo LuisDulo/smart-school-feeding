@@ -341,9 +341,41 @@ class RecordMealView(APIView):
 
         today = date.today()
         daily_limit = settings.MAX_MEALS_PER_STUDENT_PER_DAY
-        meals_today = MealDistributionEvent.objects.filter(
-            meal_account=meal_account, meal_date=today).count()
-        if daily_limit and meals_today >= daily_limit:
+        # request.user is already resolved to a meals.User instance by
+        # MealsJWTAuthentication (see core/authentication.py). This is
+        # who "served by" refers to - the authenticated kitchen account,
+        # not a free-typed name/email that could be spoofed.
+        recorded_by = request.user
+
+        # Lock the meal account for the checks and the deduction, so a
+        # top-up confirmed at the same moment, or a second scan of the same
+        # card, waits for this serve instead of overwriting its balance or
+        # slipping past the daily limit.
+        refusal = None
+        with db_transaction.atomic():
+            meal_account = MealAccount.objects.select_for_update().get(
+                pk=meal_account.pk)
+            meals_today = MealDistributionEvent.objects.filter(
+                meal_account=meal_account, meal_date=today).count()
+            if daily_limit and meals_today >= daily_limit:
+                refusal = 'daily_limit'
+            elif (meal_account.balance_cents - total_cents
+                  < -meal_account.credit_limit_cents):
+                refusal = 'balance'
+            else:
+                event = MealDistributionEvent.objects.create(
+                    meal_account=meal_account,
+                    recorded_by=recorded_by,
+                    meal_date=today,
+                    meals_served=1,
+                    amount_cents=total_cents,
+                )
+                event.items.set(items)
+                meal_account.balance_cents -= total_cents
+                meal_account.save(
+                    update_fields=['balance_cents', 'last_updated'])
+
+        if refusal == 'daily_limit':
             try:
                 meal_detection.record_blocked_attempt(
                     meal_account, request.user, today=today)
@@ -359,31 +391,13 @@ class RecordMealView(APIView):
                 'daily_limit': daily_limit,
             }, status=status.HTTP_409_CONFLICT)
 
-        if meal_account.balance_cents - total_cents < -meal_account.credit_limit_cents:
+        if refusal == 'balance':
             return Response({
                 'error': 'Insufficient balance (including approved credit).',
                 'balance_ksh': meal_account.balance_cents / 100,
                 'credit_limit_ksh': meal_account.credit_limit_cents / 100,
                 'required_ksh': total_cents / 100
             }, status=status.HTTP_402_PAYMENT_REQUIRED)
-
-        # request.user is already resolved to a meals.User instance by
-        # MealsJWTAuthentication (see core/authentication.py). This is
-        # who "served by" refers to — the authenticated kitchen account,
-        # not a free-typed name/email that could be spoofed.
-        recorded_by = request.user
-
-        with db_transaction.atomic():
-            event = MealDistributionEvent.objects.create(
-                meal_account=meal_account,
-                recorded_by=recorded_by,
-                meal_date=today,
-                meals_served=1,
-                amount_cents=total_cents,
-            )
-            event.items.set(items)
-            meal_account.balance_cents -= total_cents
-            meal_account.save()
 
         try:
             meal_detection.flag_meal_event(event)
