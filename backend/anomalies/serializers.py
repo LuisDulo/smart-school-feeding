@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from .severity import payment_severity, meal_severity
 from meals.models import AnomalyFlag, MealAnomalyFlag, PaymentTransaction
 
 
@@ -35,11 +36,7 @@ class AnomalyFlagSerializer(serializers.ModelSerializer):
         return None
 
     def get_severity(self, obj):
-        if obj.anomaly_score >= 0.80:
-            return 'HIGH'
-        elif obj.anomaly_score >= 0.65:
-            return 'MEDIUM'
-        return 'LOW'
+        return payment_severity(obj.anomaly_score)
 
 
 class ReviewFlagSerializer(serializers.Serializer):
@@ -87,8 +84,4 @@ class MealAnomalyFlagSerializer(serializers.ModelSerializer):
         return obj.reviewed_by.full_name if obj.reviewed_by else None
 
     def get_severity(self, obj):
-        if obj.anomaly_score >= 0.80:
-            return 'HIGH'
-        if obj.anomaly_score >= 0.65:
-            return 'MEDIUM'
-        return 'LOW'
+        return meal_severity(obj.anomaly_score)

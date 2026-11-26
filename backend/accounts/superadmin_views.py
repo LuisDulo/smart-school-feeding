@@ -1,4 +1,5 @@
 import logging
+from anomalies.severity import payment_filter, payment_severity
 from datetime import date, timedelta
 from django.db.models import Sum
 from rest_framework.views import APIView
@@ -561,24 +562,17 @@ class SuperAdminAnomalyView(APIView):
         # Filtered at the ORM level, before pagination, so matches
         # aren't silently lost past the page slice.
         sev_filter = request.query_params.get('severity')
-        if sev_filter == 'HIGH':
-            flags = flags.filter(anomaly_score__gte=0.80)
-        elif sev_filter == 'MEDIUM':
-            flags = flags.filter(anomaly_score__gte=0.65,
-                                  anomaly_score__lt=0.80)
-        elif sev_filter == 'LOW':
-            flags = flags.filter(anomaly_score__lt=0.65)
+        flags = flags.filter(payment_filter(sev_filter))
 
         pending = flags.filter(reviewed=False).count()
-        high = flags.filter(anomaly_score__gte=0.80).count()
+        high = flags.filter(payment_filter('HIGH')).count()
 
         page, meta = paginate_queryset(request, flags, default_limit=200)
 
         result = []
         for f in page:
             score = f.anomaly_score
-            severity = 'HIGH' if score >= 0.80 else \
-                       'MEDIUM' if score >= 0.65 else 'LOW'
+            severity = payment_severity(score)
             result.append({
                 'id': f.id,
                 'school': f.transaction.meal_account
