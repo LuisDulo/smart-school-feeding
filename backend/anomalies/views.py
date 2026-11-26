@@ -14,6 +14,7 @@ from meals.models import (PaymentTransaction, AnomalyFlag, MealAnomalyFlag,
 from .serializers import (AnomalyFlagSerializer, ReviewFlagSerializer,
                           MealAnomalyFlagSerializer)
 from . import meal_detection
+from .severity import payment_filter, payment_severity, meal_filter
 from core.permissions import IsAdminOrBursar
 
 logger = logging.getLogger(__name__)
@@ -185,8 +186,7 @@ class AnomalyFlagQueueView(APIView):
             flags = flags.filter(reviewed=True)
 
         pending_count = flags.filter(reviewed=False).count()
-        high_count = sum(
-            1 for f in flags if f.anomaly_score >= 0.80)
+        high_count = flags.filter(payment_filter('HIGH')).count()
 
         return Response({
             'total': flags.count(),
@@ -261,10 +261,9 @@ class AnomalyStatsView(APIView):
             'total_flags': all_flags.count(),
             'pending_review': all_flags.filter(reviewed=False).count(),
             'reviewed': all_flags.filter(reviewed=True).count(),
-            'high_severity': sum(1 for s in scores if s >= 0.80),
-            'medium_severity': sum(1 for s in scores
-                                   if 0.65 <= s < 0.80),
-            'low_severity': sum(1 for s in scores if s < 0.65),
+            'high_severity': sum(1 for s in scores if payment_severity(s) == 'HIGH'),
+            'medium_severity': sum(1 for s in scores if payment_severity(s) == 'MEDIUM'),
+            'low_severity': sum(1 for s in scores if payment_severity(s) == 'LOW'),
             'avg_score': round(
                 sum(scores) / len(scores), 4) if scores else 0,
             'model': 'IsolationForest',
@@ -354,7 +353,7 @@ class MealFlagQueueView(APIView):
         return Response({
             'total': flags.count(),
             'pending': base.filter(reviewed=False).count(),
-            'high_severity': base.filter(anomaly_score__gte=0.80).count(),
+            'high_severity': base.filter(meal_filter('HIGH')).count(),
             'flags': MealAnomalyFlagSerializer(flags[:self.MAX_ROWS], many=True).data,
         })
 
