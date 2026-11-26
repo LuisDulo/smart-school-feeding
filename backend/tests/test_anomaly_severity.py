@@ -62,3 +62,39 @@ class TestSeverityInTheApi(TestCase):
         body = self.get('/api/superadmin/anomalies/?severity=HIGH', 'super@sev.test')
         self.assertEqual([f['anomaly_score'] for f in body['flags']], [0.63])
         self.assertEqual(body['high_severity'], 1)
+
+
+class TestNetworkMealFlags(TestCase):
+    """The network Anomaly Flags page read only payment flags; meal-serving
+    flags from every school now appear under ?type=meal."""
+
+    def setUp(self):
+        from datetime import date
+        from meals.models import MealAnomalyFlag
+        wk = School.objects.create(name='Webmasters Kenya', county='Nairobi',
+                                   contact_email='wk2@test.com')
+        make_user(wk, 'superadmin', 'Net Super', 'super@net.test')
+        for n, score in ((1, 0.85), (2, 0.51)):
+            school = School.objects.create(name=f'Net School {n}', county='Nairobi',
+                                           contact_email=f'net{n}@test.com')
+            student = make_user(school, 'student', f'Net Student {n}', f'student{n}@net.test')
+            account = MealAccount.objects.create(student=student, balance_cents=0)
+            MealAnomalyFlag.objects.create(
+                school=school, meal_account=account, kind='pattern', flag_date=date.today(),
+                anomaly_score=score, reasons=[f'reason {n}'])
+
+    def get(self, url):
+        token = self.client.post('/api/auth/login/', {'email': 'super@net.test', 'password': PASSWORD},
+                                 content_type='application/json').json()['tokens']['access']
+        return self.client.get(url, HTTP_AUTHORIZATION=f'Bearer {token}').json()
+
+    def test_meal_flags_from_every_school_are_listed(self):
+        body = self.get('/api/superadmin/anomalies/?type=meal&reviewed=')
+        self.assertEqual(body['total'], 2)
+        self.assertEqual({f['school'] for f in body['flags']}, {'Net School 1', 'Net School 2'})
+        self.assertEqual({f['severity'] for f in body['flags']}, {'HIGH', 'LOW'})
+        self.assertEqual(body['high_severity'], 1)
+        self.assertIn('reason 1', [r for f in body['flags'] for r in f['reasons']])
+
+    def test_payment_view_is_unchanged_by_default(self):
+        self.assertEqual(self.get('/api/superadmin/anomalies/')['total'], 0)
