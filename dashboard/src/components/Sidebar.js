@@ -6,6 +6,7 @@ import {
 } from 'react-icons/fi';
 import { MdOutlineRestaurant, MdOutlineSchool, MdOutlineRoomService, MdOutlineMenuBook } from 'react-icons/md';
 import { useAuth } from '../context/AuthContext';
+import ChangePasswordLink from './ChangePasswordLink';
 
 // `roles` mirrors each page's actual backend permission (see the
 // corresponding view's permission_classes) so a role never sees a nav
@@ -68,7 +69,8 @@ export default function Sidebar({ active, onNavigate, flagCount = 0 }) {
         </div>
       ))}
 
-      <div style={styles.logout} onClick={logout}>
+      <ChangePasswordLink rowStyle={styles.passwordRow} iconStyle={styles.inlineIcon} />
+      <div style={{ ...styles.logout, marginTop: 0 }} onClick={logout}>
         <FiLogOut style={styles.inlineIcon} /> Logout
       </div>
     </div>
@@ -94,6 +96,9 @@ const styles = {
   badge: { marginLeft: 'auto', background: '#C0392B', color: '#fff',
            fontSize: 10, fontWeight: 700, borderRadius: 10,
            padding: '2px 7px' },
+  passwordRow: { marginTop: 'auto', padding: '14px 20px 10px', color: '#6B9AB8',
+                 fontSize: 13, cursor: 'pointer', borderTop: '1px solid #2A4A6C',
+                 display: 'flex', alignItems: 'center' },
   logout: { marginTop: 'auto', padding: '16px 20px',
             color: '#6B9AB8', fontSize: 13, cursor: 'pointer',
             borderTop: '1px solid #2A4A6C', display: 'flex',

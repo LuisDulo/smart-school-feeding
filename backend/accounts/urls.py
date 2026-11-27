@@ -3,6 +3,7 @@ from .views import (RegisterView, LoginView, ProfileView, LogoutView,
                     SchoolListView, TokenRefreshView, PushTokenView)
 from .admin_views import (AdminCreateStudentView, AdminCreateParentView,
                            LinkGuardianView, RegenerateStudentQRView)
+from .views import ChangePasswordView
 
 urlpatterns = [
     path('register/', RegisterView.as_view(), name='register'),
@@ -10,6 +11,7 @@ urlpatterns = [
     path('token/refresh/', TokenRefreshView.as_view(), name='token-refresh'),
     path('profile/', ProfileView.as_view(), name='profile'),
     path('logout/', LogoutView.as_view(), name='logout'),
+    path('change-password/', ChangePasswordView.as_view(), name='change-password'),
     path('push-token/', PushTokenView.as_view(), name='push-token'),
     path('schools/', SchoolListView.as_view(), name='schools'),
     path('admin/students/', AdminCreateStudentView.as_view(), name='admin-students'),

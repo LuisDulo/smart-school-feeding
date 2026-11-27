@@ -154,6 +154,7 @@ REST_FRAMEWORK = {
         'login': '10/min',
         'register': '20/hour',
         'refresh': '30/min',
+        'password': '10/hour',
     },
     # Set NUM_PROXIES (e.g. 1 behind ngrok/nginx) so throttling keys on the
     # real client IP from X-Forwarded-For instead of the proxy's address.

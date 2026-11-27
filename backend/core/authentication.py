@@ -22,6 +22,11 @@ class MealsJWTAuthentication(JWTAuthentication):
             raise InvalidToken('Token contained no recognizable user identification')
 
         try:
-            return User.objects.select_related('school').get(id=user_id)
+            user = User.objects.select_related('school').get(id=user_id)
         except User.DoesNotExist:
             raise AuthenticationFailed('User not found', code='user_not_found')
+        # Tokens issued before the user's last password change are revoked.
+        if validated_token.get('ver', 0) != user.token_version:
+            raise AuthenticationFailed('Session ended by a password change. Please sign in again.',
+                                       code='token_revoked')
+        return user

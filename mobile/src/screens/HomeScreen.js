@@ -247,6 +247,10 @@ export default function HomeScreen({ navigation }) {
         </View>
       )}
 
+      <TouchableOpacity style={styles.passwordBtn} onPress={() => navigation.navigate('ChangePassword')}>
+        <Text style={styles.passwordText}>Change password</Text>
+      </TouchableOpacity>
+
       <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
         <Text style={styles.logoutText}>Log out</Text>
       </TouchableOpacity>
@@ -292,4 +296,7 @@ const styles = StyleSheet.create({
   logoutBtn: { margin: 20, borderWidth: 1, borderColor: '#E5E7EB',
                borderRadius: 10, padding: 14, alignItems: 'center' },
   logoutText: { color: '#EF4444', fontWeight: '600', fontSize: 14 },
+  passwordBtn: { marginHorizontal: 20, marginTop: 20, borderWidth: 1, borderColor: '#E5E7EB',
+                 borderRadius: 10, paddingVertical: 14, alignItems: 'center', backgroundColor: '#fff' },
+  passwordText: { color: '#1A3A5C', fontWeight: '600', fontSize: 14 },
 });
