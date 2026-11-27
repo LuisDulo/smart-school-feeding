@@ -152,7 +152,6 @@ REST_FRAMEWORK = {
         'user': '2000/min',
         # Brute-force protection on the credential endpoints.
         'login': '10/min',
-        'register': '20/hour',
         'refresh': '30/min',
         'password': '10/hour',
     },
