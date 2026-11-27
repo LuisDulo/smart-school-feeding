@@ -8,7 +8,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useAuth } from '../context/AuthContext';
 import { mealsAPI } from '../services/api';
 
-export default function KitchenServeScreen() {
+export default function KitchenServeScreen({ navigation }) {
   const { user, logout } = useAuth();
   const [query, setQuery] = useState('');
   const [students, setStudents] = useState([]);
@@ -194,9 +194,14 @@ export default function KitchenServeScreen() {
           <Text style={styles.greeting}>Kitchen · {user?.school?.name}</Text>
           <Text style={styles.name}>{user?.full_name}</Text>
         </View>
-        <TouchableOpacity onPress={handleLogout}>
-          <Text style={styles.logout}>Log out</Text>
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity onPress={() => navigation.navigate('ChangePassword')}>
+            <Text style={styles.logout}>Password</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleLogout}>
+            <Text style={styles.logout}>Log out</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.searchWrap}>
@@ -367,6 +372,7 @@ const styles = StyleSheet.create({
   greeting: { color: '#A8D8C0', fontSize: 12 },
   name: { color: '#fff', fontSize: 18, fontWeight: '700', marginTop: 2 },
   logout: { color: '#F87171', fontSize: 13, marginTop: 4 },
+  headerActions: { flexDirection: 'row', gap: 16 },
   searchWrap: { padding: 16 },
   searchRow: { flexDirection: 'row', gap: 10, alignItems: 'center' },
   searchInput: { flex: 1, backgroundColor: '#fff', borderWidth: 1, borderColor: '#E5E7EB',

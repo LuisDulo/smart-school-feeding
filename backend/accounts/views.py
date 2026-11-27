@@ -9,6 +9,7 @@ from meals.push import is_valid_token
 from .serializers import (LoginSerializer,
                            UserProfileSerializer, SchoolSerializer)
 import bcrypt
+from .password_rules import password_problems
 
 # Checked when the email is unknown, so that path costs the same bcrypt work
 # as a wrong password and response times do not reveal which emails exist.
@@ -23,6 +24,7 @@ def get_tokens_for_user(user):
     refresh['role'] = user.role
     refresh['full_name'] = user.full_name
     refresh['school_id'] = user.school_id
+    refresh['ver'] = user.token_version  # copied into the access token too
     return {
         'refresh': str(refresh),
         'access': str(refresh.access_token),
@@ -98,6 +100,8 @@ class TokenRefreshView(APIView):
         try:
             old = RefreshToken(raw)  # rejects expired / blacklisted tokens
             user = User.objects.get(id=old.get('user_id'))
+            if old.get('ver', 0) != user.token_version:
+                raise TokenError('issued before the last password change')
             old.blacklist()
         except (TokenError, User.DoesNotExist):
             return Response({'error': 'Invalid or expired refresh token.'},
@@ -119,6 +123,44 @@ class LogoutView(APIView):
                 pass  # already expired/blacklisted — nothing to revoke
         return Response({'message': 'Logged out successfully.'},
                         status=status.HTTP_200_OK)
+
+
+class ChangePasswordView(APIView):
+    """
+    POST /api/auth/change-password/
+    Body: { current_password, new_password }
+
+    Accounts are created by school administrators, who therefore know the
+    initial password; this lets every user replace it. The new password must
+    pass the same rules as account creation. Bumping token_version revokes
+    every existing session (other phones, other browsers, anyone who knew the
+    old password); the caller gets fresh tokens so this device stays signed in.
+    """
+    permission_classes = [IsAuthenticated]
+    throttle_scope = 'password'
+
+    def post(self, request):
+        user = request.user
+        current = request.data.get('current_password') or ''
+        new = request.data.get('new_password') or ''
+
+        if not bcrypt.checkpw(current.encode('utf-8'), user.hashed_password.encode('utf-8')):
+            return Response({'current_password': ['Your current password is incorrect.']},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if new == current:
+            return Response({'new_password': ['Choose a password different from your current one.']},
+                            status=status.HTTP_400_BAD_REQUEST)
+        problems = password_problems(new, user.full_name, user.email)
+        if problems:
+            return Response({'new_password': problems}, status=status.HTTP_400_BAD_REQUEST)
+
+        user.hashed_password = bcrypt.hashpw(new.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        user.token_version += 1
+        user.save(update_fields=['hashed_password', 'token_version'])
+        return Response({
+            'message': 'Password changed. You have been signed out on your other devices.',
+            'tokens': get_tokens_for_user(user),
+        }, status=status.HTTP_200_OK)
 
 
 class SchoolListView(APIView):

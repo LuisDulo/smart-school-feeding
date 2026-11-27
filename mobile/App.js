@@ -22,6 +22,7 @@ import BalanceTrendScreen from './src/screens/BalanceTrendScreen';
 import MonthlyReportScreen from './src/screens/MonthlyReportScreen';
 import ReminderSettingsScreen from './src/screens/ReminderSettingsScreen';
 import QRCodeScreen from './src/screens/QRCodeScreen';
+import ChangePasswordScreen from './src/screens/ChangePasswordScreen';
 import {
   configureNotifications,
   listenForNotificationTaps,
@@ -56,7 +57,10 @@ function AppNavigator() {
       {user?.role === 'kitchen' ? (
         // Kitchen staff only serve meals — none of the payment/balance
         // screens below are relevant to them.
-        <Stack.Screen name="KitchenServe" component={KitchenServeScreen} />
+        <>
+          <Stack.Screen name="KitchenServe" component={KitchenServeScreen} />
+          <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
+        </>
       ) : user ? (
         <>
           <Stack.Screen name="Home" component={HomeScreen} />
@@ -72,6 +76,7 @@ function AppNavigator() {
           <Stack.Screen name="MonthlyReport" component={MonthlyReportScreen} />
           <Stack.Screen name="ReminderSettings" component={ReminderSettingsScreen} />
           <Stack.Screen name="QRCode" component={QRCodeScreen} />
+          <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
         </>
       ) : (
         <>

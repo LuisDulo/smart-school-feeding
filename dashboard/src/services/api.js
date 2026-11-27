@@ -62,6 +62,7 @@ export const authAPI = {
   profile: () => api.get('/auth/profile/'),
   logout: (refresh, access) => api.post('/auth/logout/', { refresh },
     { headers: { Authorization: `Bearer ${access}` } }),
+  changePassword: (data) => api.post('/auth/change-password/', data),
 };
 
 export const forecastAPI = {

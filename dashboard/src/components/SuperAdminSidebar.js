@@ -5,6 +5,7 @@ import {
 } from 'react-icons/fi';
 import { MdOutlineSchool } from 'react-icons/md';
 import { useAuth } from '../context/AuthContext';
+import ChangePasswordLink from './ChangePasswordLink';
 
 const NAV = [
   { key: 'overview',   label: 'Overview',         Icon: FiGlobe },
@@ -50,7 +51,8 @@ export default function SuperAdminSidebar({
         </div>
       ))}
 
-      <div style={styles.logout} onClick={logout}>
+      <ChangePasswordLink rowStyle={styles.passwordRow} iconStyle={styles.inlineIcon} />
+      <div style={{ ...styles.logout, marginTop: 0 }} onClick={logout}>
         <FiLogOut style={styles.inlineIcon} /> Logout
       </div>
     </div>
@@ -85,6 +87,9 @@ const styles = {
                color: '#fff', fontSize: 10, fontWeight: 700,
                borderRadius: 10, padding: '2px 7px' },
   inlineIcon: { width: 14, height: 14, verticalAlign: -2, marginRight: 6 },
+  passwordRow: { marginTop: 'auto', padding: '14px 20px 10px', color: '#4A7A9B',
+                 fontSize: 13, cursor: 'pointer', borderTop: '1px solid #1A3A5C',
+                 display: 'flex', alignItems: 'center' },
   logout: { marginTop: 'auto', padding: '16px 20px',
             color: '#4A7A9B', fontSize: 13,
             cursor: 'pointer',

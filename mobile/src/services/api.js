@@ -78,6 +78,7 @@ export const authAPI = {
   login: (data) => api.post('/auth/login/', data),
   profile: () => api.get('/auth/profile/'),
   logout: (refresh) => api.post('/auth/logout/', { refresh }),
+  changePassword: (data) => api.post('/auth/change-password/', data),
   getSchools: () => api.get('/auth/schools/'),
   registerPushToken: (token, platform) => api.post('/auth/push-token/', { token, platform }),
   removePushToken: (token) => api.delete('/auth/push-token/', { data: { token } }),
