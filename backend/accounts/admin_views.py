@@ -9,7 +9,9 @@ from .admin_serializers import (AdminCreateStudentSerializer,
                                  AdminCreateParentSerializer,
                                  LinkGuardianSerializer,
                                  StudentListSerializer,
-                                 ParentListSerializer)
+                                 ParentListSerializer,
+                                 AdminCreateStaffSerializer,
+                                 StaffListSerializer)
 from .serializers import UserProfileSerializer
 
 
@@ -127,3 +129,29 @@ class RegenerateStudentQRView(APIView):
             'student_id': student.id,
             'qr_token': str(meal_account.qr_token),
         })
+
+
+class AdminStaffView(APIView):
+    """
+    Admin lists their school's staff and creates kitchen or bursar accounts.
+    GET  /api/auth/admin/staff/
+    POST /api/auth/admin/staff/   Body: { full_name, email, password, role }
+    """
+    permission_classes = [IsAuthenticated, IsSchoolAdmin]
+
+    def post(self, request):
+        serializer = AdminCreateStaffSerializer(
+            data=request.data, context={'school': request.user.school})
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        staff = serializer.save()
+        return Response({
+            'message': f'{staff.get_role_display()} account created.',
+            'staff': StaffListSerializer(staff).data,
+        }, status=status.HTTP_201_CREATED)
+
+    def get(self, request):
+        staff = User.objects.filter(
+            school=request.user.school, role__in=['admin', 'bursar', 'kitchen']
+        ).order_by('role', 'full_name')
+        return Response(StaffListSerializer(staff, many=True).data)

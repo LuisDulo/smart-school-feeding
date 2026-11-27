@@ -9,19 +9,22 @@ const TABS = [
   { key: 'students', label: 'Students' },
   { key: 'parents', label: 'Parents' },
   { key: 'link', label: 'Link Parent to Student' },
+  { key: 'staff', label: 'Staff' },
 ];
 
 export default function AccountManagement() {
   const [tab, setTab] = useState('students');
   const [students, setStudents] = useState([]);
   const [parents, setParents] = useState([]);
+  const [staff, setStaff] = useState([]);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
 
   const loadStudents = () => adminAPI.listStudents().then(res => setStudents(res.data)).catch(() => {});
   const loadParents = () => adminAPI.listParents().then(res => setParents(res.data)).catch(() => {});
+  const loadStaff = () => adminAPI.listStaff().then(res => setStaff(res.data)).catch(() => {});
 
-  useEffect(() => { loadStudents(); loadParents(); }, []);
+  useEffect(() => { loadStudents(); loadParents(); loadStaff(); }, []);
 
   const flash = (msg) => {
     setMessage(msg);
@@ -30,7 +33,7 @@ export default function AccountManagement() {
 
   return (
     <div style={styles.page}>
-      <Topbar title="Account Management" subtitle="Create student and parent accounts, and link families together" />
+      <Topbar title="Account Management" subtitle="Create student, parent and staff accounts, and link families together" />
       <div style={styles.content}>
         <div style={styles.tabs}>
           {TABS.map(t => (
@@ -60,6 +63,13 @@ export default function AccountManagement() {
             parents={parents}
             students={students}
             onCreated={() => { loadParents(); flash('Parent account created.'); }}
+            setError={setError}
+          />
+        )}
+        {tab === 'staff' && (
+          <StaffTab
+            staff={staff}
+            onCreated={(label) => { loadStaff(); flash(`${label} account created.`); }}
             setError={setError}
           />
         )}
@@ -289,6 +299,76 @@ function ParentsTab({ parents, students, onCreated, setError }) {
             </div>
           ))}
           {parents.length === 0 && <div style={styles.empty}>No parents yet.</div>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const STAFF_ROLES = [
+  { value: 'kitchen', label: 'Kitchen Staff' },
+  { value: 'bursar', label: 'Bursar' },
+];
+
+function StaffTab({ staff, onCreated, setError }) {
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [role, setRole] = useState('kitchen');
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setError('');
+    try {
+      const res = await adminAPI.createStaff({ full_name: fullName, email, password, role });
+      setFullName(''); setEmail(''); setPassword(''); setRole('kitchen');
+      onCreated(res.data.staff.role_label);
+    } catch (e) {
+      const data = e.response?.data;
+      setError(data ? Object.values(data).flat().join(' ') : 'Could not create the staff account.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div style={styles.grid}>
+      <form style={styles.card} onSubmit={handleSubmit}>
+        <h3 style={styles.cardTitle}><FiUserPlus style={styles.cardIcon} /> New Staff Member</h3>
+        <label style={styles.label}>Role</label>
+        <select style={styles.input} value={role} onChange={e => setRole(e.target.value)}>
+          {STAFF_ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+        </select>
+        <label style={styles.label}>Full Name</label>
+        <input style={styles.input} value={fullName} onChange={e => setFullName(e.target.value)} required />
+        <label style={styles.label}>Email</label>
+        <input style={styles.input} type="email" value={email} onChange={e => setEmail(e.target.value)} required />
+        <label style={styles.label}>Password</label>
+        <input style={styles.input} type="password" value={password} onChange={e => setPassword(e.target.value)} required minLength={8} />
+        <div style={styles.listSub}>
+          Kitchen staff serve meals; bursars see balances, payments and reports. Administrator
+          accounts are created by Webmasters Kenya.
+        </div>
+        <button style={styles.submitBtn} type="submit" disabled={submitting}>
+          {submitting ? 'Creating...' : 'Create Staff Account'}
+        </button>
+      </form>
+
+      <div style={styles.listCard}>
+        <h3 style={styles.cardTitle}>Staff ({staff.length})</h3>
+        <div style={styles.list}>
+          {staff.map(s => (
+            <div key={s.id} style={styles.listRow}>
+              <div>
+                <div style={styles.listName}>{s.full_name}</div>
+                <div style={styles.listSub}>{s.email}</div>
+              </div>
+              <div style={styles.listSub}>{s.role_label}</div>
+            </div>
+          ))}
+          {staff.length === 0 && <div style={styles.empty}>No staff yet.</div>}
         </div>
       </div>
     </div>
