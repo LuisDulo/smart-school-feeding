@@ -2,7 +2,8 @@ from django.urls import path
 from .views import (RegisterView, LoginView, ProfileView, LogoutView,
                     SchoolListView, TokenRefreshView, PushTokenView)
 from .admin_views import (AdminCreateStudentView, AdminCreateParentView,
-                           LinkGuardianView, RegenerateStudentQRView)
+                           LinkGuardianView, RegenerateStudentQRView,
+                           AdminStaffView)
 
 urlpatterns = [
     path('register/', RegisterView.as_view(), name='register'),
@@ -14,6 +15,7 @@ urlpatterns = [
     path('schools/', SchoolListView.as_view(), name='schools'),
     path('admin/students/', AdminCreateStudentView.as_view(), name='admin-students'),
     path('admin/parents/', AdminCreateParentView.as_view(), name='admin-parents'),
+    path('admin/staff/', AdminStaffView.as_view(), name='admin-staff'),
     path('admin/link/', LinkGuardianView.as_view(), name='admin-link-guardian'),
     path('admin/students/<int:student_id>/regenerate-qr/',
          RegenerateStudentQRView.as_view(), name='admin-regenerate-qr'),

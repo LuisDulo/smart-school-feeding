@@ -150,3 +150,43 @@ class ParentListSerializer(serializers.ModelSerializer):
             {'id': acc.student.id, 'full_name': acc.student.full_name}
             for acc in obj.linked_meal_accounts.select_related('student').all()
         ]
+
+
+# Roles a school administrator may create. Administrator accounts stay with
+# the super administrator, so a school admin cannot hand out admin rights.
+SCHOOL_STAFF_ROLES = ['kitchen', 'bursar']
+
+
+class AdminCreateStaffSerializer(serializers.Serializer):
+    """Admin creates a kitchen or bursar account for their own school."""
+    full_name = serializers.CharField(max_length=255)
+    email = serializers.EmailField()
+    password = serializers.CharField(min_length=8)
+    role = serializers.ChoiceField(choices=SCHOOL_STAFF_ROLES)
+
+    def validate(self, attrs):
+        validate_password_or_raise(
+            attrs['password'], attrs.get('full_name', ''), attrs.get('email', ''))
+        return attrs
+
+    def validate_email(self, value):
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("A user with this email already exists.")
+        return value
+
+    def create(self, validated_data):
+        return User.objects.create(
+            school=self.context['school'],
+            role=validated_data['role'],
+            full_name=validated_data['full_name'],
+            email=validated_data['email'],
+            hashed_password=hash_password(validated_data['password']),
+        )
+
+
+class StaffListSerializer(serializers.ModelSerializer):
+    role_label = serializers.CharField(source='get_role_display', read_only=True)
+
+    class Meta:
+        model = User
+        fields = ['id', 'full_name', 'email', 'role', 'role_label', 'created_at']
