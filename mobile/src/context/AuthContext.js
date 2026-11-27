@@ -45,17 +45,6 @@ export function AuthProvider({ children }) {
     return user;
   };
 
-  const register = async (data) => {
-    const response = await authAPI.register(data);
-    const { tokens, user } = response.data;
-    await AsyncStorage.setItem('access_token', tokens.access);
-    await AsyncStorage.setItem('refresh_token', tokens.refresh);
-    await AsyncStorage.setItem('user_data', JSON.stringify(user));
-    setUser(user);
-    if (user.role !== 'kitchen') registerForPush();
-    return user;
-  };
-
   const logout = async () => {
     // Needs the access token, so before storage is cleared; capped so an
     // offline phone can still log out promptly.
@@ -71,7 +60,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

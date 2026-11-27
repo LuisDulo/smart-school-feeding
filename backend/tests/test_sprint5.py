@@ -41,44 +41,6 @@ class TestAuthentication(TestCase):
     def setUp(self):
         self.school = create_school('Auth School', 'auth@test.com')
 
-    def test_register_student_creates_meal_account(self):
-        res = self.client.post('/api/auth/register/', {
-            'full_name': 'Test Student',
-            'email': 'reg@test.com',
-            'password': 'Password123!',
-            'role': 'student',
-            'school_id': self.school.id
-        }, content_type='application/json')
-        self.assertEqual(res.status_code, 201)
-        self.assertTrue(
-            MealAccount.objects.filter(
-                student__email='reg@test.com').exists())
-
-    def test_register_parent_no_meal_account(self):
-        res = self.client.post('/api/auth/register/', {
-            'full_name': 'Parent User',
-            'email': 'parent@test.com',
-            'password': 'Password123!',
-            'role': 'parent',
-            'school_id': self.school.id
-        }, content_type='application/json')
-        self.assertEqual(res.status_code, 201)
-        self.assertFalse(
-            MealAccount.objects.filter(
-                student__email='parent@test.com').exists())
-
-    def test_duplicate_email_rejected(self):
-        create_user(self.school, 'student',
-                    'Existing', 'exists@test.com')
-        res = self.client.post('/api/auth/register/', {
-            'full_name': 'New',
-            'email': 'exists@test.com',
-            'password': 'Password123!',
-            'role': 'student',
-            'school_id': self.school.id
-        }, content_type='application/json')
-        self.assertEqual(res.status_code, 400)
-
     def test_login_valid_returns_tokens(self):
         create_user(self.school, 'admin',
                     'Admin', 'admin@test.com')
