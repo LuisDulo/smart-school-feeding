@@ -8,7 +8,6 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { ActivityIndicator, View } from 'react-native';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import LoginScreen from './src/screens/LoginScreen';
-import RegisterScreen from './src/screens/RegisterScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import TopUpScreen from './src/screens/TopUpScreen';
 import PaymentStatusScreen from './src/screens/PaymentStatusScreen';
@@ -23,6 +22,7 @@ import BalanceTrendScreen from './src/screens/BalanceTrendScreen';
 import MonthlyReportScreen from './src/screens/MonthlyReportScreen';
 import ReminderSettingsScreen from './src/screens/ReminderSettingsScreen';
 import QRCodeScreen from './src/screens/QRCodeScreen';
+import ChangePasswordScreen from './src/screens/ChangePasswordScreen';
 import {
   configureNotifications,
   listenForNotificationTaps,
@@ -57,7 +57,10 @@ function AppNavigator() {
       {user?.role === 'kitchen' ? (
         // Kitchen staff only serve meals — none of the payment/balance
         // screens below are relevant to them.
-        <Stack.Screen name="KitchenServe" component={KitchenServeScreen} />
+        <>
+          <Stack.Screen name="KitchenServe" component={KitchenServeScreen} />
+          <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
+        </>
       ) : user ? (
         <>
           <Stack.Screen name="Home" component={HomeScreen} />
@@ -73,11 +76,11 @@ function AppNavigator() {
           <Stack.Screen name="MonthlyReport" component={MonthlyReportScreen} />
           <Stack.Screen name="ReminderSettings" component={ReminderSettingsScreen} />
           <Stack.Screen name="QRCode" component={QRCodeScreen} />
+          <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} />
         </>
       ) : (
         <>
           <Stack.Screen name="Login" component={LoginScreen} />
-          <Stack.Screen name="Register" component={RegisterScreen} />
         </>
       )}
     </Stack.Navigator>

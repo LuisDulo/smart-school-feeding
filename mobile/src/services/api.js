@@ -51,7 +51,7 @@ async function refreshTokens() {
 }
 
 const isPublicAuthCall = (config) =>
-  ['/auth/login', '/auth/register'].some((path) => (config?.url || '').startsWith(path));
+  (config?.url || '').startsWith('/auth/login');
 
 api.interceptors.response.use(
   (res) => res,
@@ -75,10 +75,10 @@ api.interceptors.response.use(
 );
 
 export const authAPI = {
-  register: (data) => api.post('/auth/register/', data),
   login: (data) => api.post('/auth/login/', data),
   profile: () => api.get('/auth/profile/'),
   logout: (refresh) => api.post('/auth/logout/', { refresh }),
+  changePassword: (data) => api.post('/auth/change-password/', data),
   getSchools: () => api.get('/auth/schools/'),
   registerPushToken: (token, platform) => api.post('/auth/push-token/', { token, platform }),
   removePushToken: (token) => api.delete('/auth/push-token/', { data: { token } }),

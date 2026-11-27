@@ -30,6 +30,10 @@ class User(models.Model):
     full_name = models.CharField(max_length=255)
     email = models.EmailField(unique=True)
     hashed_password = models.CharField(max_length=255)
+    # Stamped into every token as the `ver` claim. Changing the password
+    # bumps it, so every token issued before the change stops working on
+    # every device, including any session held by whoever set the old one.
+    token_version = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

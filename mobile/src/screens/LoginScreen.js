@@ -76,11 +76,11 @@ export default function LoginScreen({ navigation }) {
             }
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-            <Text style={styles.link}>
-              Don't have an account? <Text style={styles.linkBold}>Register</Text>
-            </Text>
-          </TouchableOpacity>
+          <Text style={styles.link}>
+            Accounts are created by your school.{'
+'}
+            <Text style={styles.linkBold}>Ask the school office for your sign-in details.</Text>
+          </Text>
         </View>
 
         <Text style={styles.footer}>Powered by M-Pesa · Webmasters Kenya</Text>

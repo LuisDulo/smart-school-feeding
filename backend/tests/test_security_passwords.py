@@ -20,25 +20,35 @@ class TestPasswordRules(TestCase):
                               'amina@example.com'), [])
 
 
-class TestRegisterEnforcesValidators(TestCase):
+class TestAccountCreationEnforcesValidators(TestCase):
+    """Accounts are created by school administrators, so that is where the
+    password rules must hold."""
+
     def setUp(self):
+        import bcrypt
+        from meals.models import User
         self.school = School.objects.create(
             name='PW School', county='Nairobi', contact_email='pw@test.com')
+        User.objects.create(
+            school=self.school, role='admin', full_name='PW Admin', email='admin@pw.test',
+            hashed_password=bcrypt.hashpw(b'Tr1cky-Meadow-Lamp', bcrypt.gensalt()).decode())
+        self.token = self.client.post(
+            '/api/auth/login/', {'email': 'admin@pw.test', 'password': 'Tr1cky-Meadow-Lamp'},
+            content_type='application/json').json()['tokens']['access']
 
-    def _register(self, password):
-        return self.client.post('/api/auth/register/', {
+    def _create_parent(self, password):
+        return self.client.post('/api/auth/admin/parents/', {
             'full_name': 'New Parent', 'email': 'newparent@example.com',
-            'password': password, 'role': 'parent',
-            'school_id': self.school.id,
-        }, content_type='application/json')
+            'password': password,
+        }, content_type='application/json', HTTP_AUTHORIZATION=f'Bearer {self.token}')
 
-    def test_common_password_blocked_at_registration(self):
-        res = self._register('password123')
+    def test_common_password_blocked_at_account_creation(self):
+        res = self._create_parent('password123')
         self.assertEqual(res.status_code, 400)
         self.assertIn('password', res.json())
 
-    def test_numeric_password_blocked_at_registration(self):
-        self.assertEqual(self._register('4829175630').status_code, 400)
+    def test_numeric_password_blocked_at_account_creation(self):
+        self.assertEqual(self._create_parent('4829175630').status_code, 400)
 
-    def test_strong_password_registers(self):
-        self.assertEqual(self._register('Tr1cky-Meadow-Lamp').status_code, 201)
+    def test_strong_password_creates_the_account(self):
+        self.assertEqual(self._create_parent('Tr1cky-Meadow-Lamp').status_code, 201)
